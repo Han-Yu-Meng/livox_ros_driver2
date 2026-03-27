@@ -62,48 +62,36 @@ int Lddc::RegisterLds(Lds *lds) {
   }
 }
 
-void Lddc::DistributePointCloudData(void) {
+void Lddc::DistributePointCloudData(uint32_t lidar_id) {
   if (!lds_) {
-    std::cout << "lds is not registered" << std::endl;
     return;
   }
   if (lds_->IsRequestExit()) {
-    std::cout << "DistributePointCloudData is RequestExit" << std::endl;
     return;
   }
   
-  lds_->pcd_semaphore_.Wait();
-  for (uint32_t i = 0; i < lds_->lidar_count_; i++) {
-    uint32_t lidar_id = i;
-    LidarDevice *lidar = &lds_->lidars_[lidar_id];
-    LidarDataQueue *p_queue = &lidar->data;
-    if ((kConnectStateSampling != lidar->connect_state) || (p_queue == nullptr)) {
-      continue;
-    }
-    PollingLidarPointCloudData(lidar_id, lidar);    
+  LidarDevice *lidar = &lds_->lidars_[lidar_id];
+  LidarDataQueue *p_queue = &lidar->data;
+  if ((kConnectStateSampling != lidar->connect_state) || (p_queue == nullptr)) {
+    return;
   }
+  PollingLidarPointCloudData(lidar_id, lidar);    
 }
 
-void Lddc::DistributeImuData(void) {
+void Lddc::DistributeImuData(uint32_t lidar_id) {
   if (!lds_) {
-    std::cout << "lds is not registered" << std::endl;
     return;
   }
   if (lds_->IsRequestExit()) {
-    std::cout << "DistributeImuData is RequestExit" << std::endl;
     return;
   }
   
-  lds_->imu_semaphore_.Wait();
-  for (uint32_t i = 0; i < lds_->lidar_count_; i++) {
-    uint32_t lidar_id = i;
-    LidarDevice *lidar = &lds_->lidars_[lidar_id];
-    LidarImuDataQueue *p_queue = &lidar->imu_data;
-    if ((kConnectStateSampling != lidar->connect_state) || (p_queue == nullptr)) {
-      continue;
-    }
-    PollingLidarImuData(lidar_id, lidar);
+  LidarDevice *lidar = &lds_->lidars_[lidar_id];
+  LidarImuDataQueue *p_queue = &lidar->imu_data;
+  if ((kConnectStateSampling != lidar->connect_state) || (p_queue == nullptr)) {
+    return;
   }
+  PollingLidarImuData(lidar_id, lidar);
 }
 
 void Lddc::PollingLidarPointCloudData(uint8_t index, LidarDevice *lidar) {

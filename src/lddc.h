@@ -61,8 +61,8 @@ class Lddc final {
   void RegisterCustomMsgCallback(CustomMsgCallback cb) { custom_cb_ = cb; }
   void RegisterImuMsgCallback(ImuMsgCallback cb) { imu_cb_ = cb; }
 
-  void DistributePointCloudData(void);
-  void DistributeImuData(void);
+  void DistributePointCloudData(uint32_t lidar_id);
+  void DistributeImuData(uint32_t lidar_id);
   void PrepareExit(void);
 
   uint8_t GetTransferFormat(void) { return transfer_format_; }

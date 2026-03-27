@@ -58,6 +58,8 @@ class Lds {
   bool IsAllQueueEmpty();
   bool IsAllQueueReadStop();
 
+  void SetLddc(void* lddc) { lddc_ = lddc; }
+
   void CleanRequestExit() { request_exit_ = false; }
   bool IsRequestExit() { return request_exit_; }
   virtual void PrepareExit(void);
@@ -71,6 +73,7 @@ class Lds {
   Semaphore pcd_semaphore_;
   Semaphore imu_semaphore_;
   static CacheIndex cache_index_;
+  void* lddc_;
  protected:
   double publish_freq_;
   uint8_t data_src_;

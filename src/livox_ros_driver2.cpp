@@ -74,6 +74,7 @@ bool DriverNode::Start() {
   future_ = exit_signal_.get_future();
 
   LdsLidar *read_lidar = LdsLidar::GetInstance(lddc_ptr_->GetPublishFrq());
+  read_lidar->SetLddc(static_cast<void*>(lddc_ptr_.get()));
   lddc_ptr_->RegisterLds(static_cast<Lds *>(read_lidar));
   if (!(read_lidar->InitLdsLidar(config_path_))) {
     std::cerr << "Init lds lidar failed!" << std::endl;
@@ -81,8 +82,6 @@ bool DriverNode::Start() {
   }
   std::cout << "Init lds lidar successfully!" << std::endl;
 
-  pointclouddata_poll_thread_ = std::make_shared<std::thread>(&DriverNode::PointCloudDataPollThread, this);
-  imudata_poll_thread_ = std::make_shared<std::thread>(&DriverNode::ImuDataPollThread, this);
   is_started_ = true;
   return true;
 }
@@ -90,12 +89,6 @@ bool DriverNode::Start() {
 void DriverNode::Stop() {
   if (!is_started_) return;
   exit_signal_.set_value();
-  if (pointclouddata_poll_thread_ && pointclouddata_poll_thread_->joinable()) {
-    pointclouddata_poll_thread_->join();
-  }
-  if (imudata_poll_thread_ && imudata_poll_thread_->joinable()) {
-    imudata_poll_thread_->join();
-  }
   lddc_ptr_->PrepareExit();
   is_started_ = false;
 }
@@ -111,25 +104,9 @@ void DriverNode::RegisterImuMsgCallback(ImuMsgCallback cb) {
 } // namespace livox_ros
 
 
-void DriverNode::PointCloudDataPollThread()
-{
-  std::future_status status;
-  std::this_thread::sleep_for(std::chrono::seconds(3));
-  do {
-    lddc_ptr_->DistributePointCloudData();
-    status = future_.wait_for(std::chrono::microseconds(0));
-  } while (status == std::future_status::timeout);
-}
+void DriverNode::PointCloudDataPollThread() {}
 
-void DriverNode::ImuDataPollThread()
-{
-  std::future_status status;
-  std::this_thread::sleep_for(std::chrono::seconds(3));
-  do {
-    lddc_ptr_->DistributeImuData();
-    status = future_.wait_for(std::chrono::microseconds(0));
-  } while (status == std::future_status::timeout);
-}
+void DriverNode::ImuDataPollThread() {}
 
 
 

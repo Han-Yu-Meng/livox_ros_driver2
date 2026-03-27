@@ -29,8 +29,8 @@
 #include <chrono>
 #include <algorithm>
 
-#include "lds.h"
 #include "comm/ldq.h"
+#include "lddc.h"
 
 namespace livox_ros {
 
@@ -43,7 +43,8 @@ Lds::Lds(const double publish_freq, const uint8_t data_src)
       imu_semaphore_(0),
       publish_freq_(publish_freq),
       data_src_(data_src),
-      request_exit_(false) {
+      request_exit_(false),
+      lddc_(nullptr) {
   ResetLds(data_src_);
 }
 
@@ -112,10 +113,8 @@ void Lds::StorageImuData(ImuData* imu_data) {
   LidarDevice *p_lidar = &lidars_[index];
   LidarImuDataQueue* imu_queue = &p_lidar->imu_data;
   imu_queue->Push(imu_data);
-  if (!imu_queue->Empty()) {
-    if (imu_semaphore_.GetCount() <= 0) {
-      imu_semaphore_.Signal();
-    }
+  if (lddc_) {
+    static_cast<Lddc*>(lddc_)->DistributeImuData(index);
   }
 }
 
@@ -179,14 +178,12 @@ void Lds::PushLidarData(PointPacket* lidar_data, const uint8_t index, const uint
 
   if (!QueueIsFull(queue)) {
     QueuePushAny(queue, (uint8_t *)lidar_data, base_time);
-    if (!QueueIsEmpty(queue)) {
-      if (pcd_semaphore_.GetCount() <= 0) {
-        pcd_semaphore_.Signal();
-      }
+    if (lddc_) {
+      static_cast<Lddc*>(lddc_)->DistributePointCloudData(index);
     }
   } else {
-    if (pcd_semaphore_.GetCount() <= 0) {
-        pcd_semaphore_.Signal();
+    if (lddc_) {
+      static_cast<Lddc*>(lddc_)->DistributePointCloudData(index);
     }
   }
 }

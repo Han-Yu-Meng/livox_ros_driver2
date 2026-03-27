@@ -30,24 +30,24 @@ void OnCustomMsg(const livox_ros::CustomMsg& msg) {
     g_last_save_time = msg.stamp;
   }
 
-  // for (const auto& p : msg.points) {
-  //   pcl::PointXYZI pt;
-  //   pt.x = p.x;
-  //   pt.y = p.y;
-  //   pt.z = p.z;
-  //   pt.intensity = static_cast<float>(p.reflectivity);
-  //   g_accumulated_cloud.push_back(pt);
-  // }
+  for (const auto& p : msg.points) {
+    pcl::PointXYZI pt;
+    pt.x = p.x;
+    pt.y = p.y;
+    pt.z = p.z;
+    pt.intensity = static_cast<float>(p.reflectivity);
+    g_accumulated_cloud.push_back(pt);
+  }
 
-  // if (msg.stamp - g_last_save_time >= SAVE_INTERVAL_NS) {
-  //   if (!g_accumulated_cloud.empty()) {
-  //     std::string filename = std::to_string(g_file_count++) + ".pcd";
-  //     pcl::io::savePCDFileBinary(filename, g_accumulated_cloud);
-  //     std::cout << "Saved " << filename << " with " << g_accumulated_cloud.size() << " points." << std::endl;
-  //     g_accumulated_cloud.clear();
-  //     g_last_save_time = msg.stamp;
-  //   }
-  // }
+  if (msg.stamp - g_last_save_time >= SAVE_INTERVAL_NS) {
+    if (!g_accumulated_cloud.empty()) {
+      std::string filename = std::to_string(g_file_count++) + ".pcd";
+      pcl::io::savePCDFileBinary(filename, g_accumulated_cloud);
+      std::cout << "Saved " << filename << " with " << g_accumulated_cloud.size() << " points." << std::endl;
+      g_accumulated_cloud.clear();
+      g_last_save_time = msg.stamp;
+    }
+  }
 
   static int count = 0;
   if (count++ % 10 == 0) {
