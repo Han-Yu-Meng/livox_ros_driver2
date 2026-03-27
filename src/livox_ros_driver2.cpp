@@ -27,9 +27,9 @@
 #include <vector>
 #include <csignal>
 #include <thread>
+#include <future>
 
 #include "include/livox_ros_driver2.h"
-#include "include/ros_headers.h"
 #include "driver_node.h"
 #include "lddc.h"
 #include "lds_lidar.h"
@@ -40,20 +40,19 @@ using namespace livox_ros;
 namespace livox_ros {
 
 DriverNode::DriverNode()
-  : node_(), config_path_(""), is_started_(false)
+  : config_path_(""), is_started_(false)
 {
-  DRIVER_INFO(node_, "Livox Driver2 standalone library");
+  std::cout << "Livox Driver2 standalone library" << std::endl;
 
   // default parameters
   int xfer_format = kLivoxCustomMsg;
   int multi_topic = 0;
   int data_src = kSourceRawLidar;
   double publish_freq = 10.0; /* Hz */
-  int output_type = kOutputToRos;
+  int output_type = kOutputToCallback;
   std::string frame_id = "livox_frame";
 
   lddc_ptr_ = std::make_unique<Lddc>(xfer_format, multi_topic, data_src, output_type, publish_freq, frame_id);
-  lddc_ptr_->SetRosNode(this);
 }
 
 std::unique_ptr<LivoxDriver> LivoxDriver::Create() {
@@ -68,7 +67,7 @@ bool DriverNode::LoadConfig(const std::string& config_path) {
 bool DriverNode::Start() {
   if (is_started_) return true;
   if (config_path_.empty()) {
-    DRIVER_ERROR(node_, "Config path is empty, cannot start.");
+    std::cerr << "Config path is empty, cannot start." << std::endl;
     return false;
   }
 
@@ -77,10 +76,10 @@ bool DriverNode::Start() {
   LdsLidar *read_lidar = LdsLidar::GetInstance(lddc_ptr_->GetPublishFrq());
   lddc_ptr_->RegisterLds(static_cast<Lds *>(read_lidar));
   if (!(read_lidar->InitLdsLidar(config_path_))) {
-    DRIVER_ERROR(node_, "Init lds lidar failed!");
+    std::cerr << "Init lds lidar failed!" << std::endl;
     return false;
   }
-  DRIVER_INFO(node_, "Init lds lidar successfully!");
+  std::cout << "Init lds lidar successfully!" << std::endl;
 
   pointclouddata_poll_thread_ = std::make_shared<std::thread>(&DriverNode::PointCloudDataPollThread, this);
   imudata_poll_thread_ = std::make_shared<std::thread>(&DriverNode::ImuDataPollThread, this);

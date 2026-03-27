@@ -27,22 +27,10 @@
 
 namespace livox_ros {
 
-DriverNode& DriverNode::GetNode() noexcept {
-  return *this;
-}
-
-DriverNode::DriverNode() : node_() {
-}
-
 DriverNode::~DriverNode() {
   if (lddc_ptr_ && lddc_ptr_->lds_) {
     lddc_ptr_->lds_->RequestExit();
   }
-  exit_signal_.set_value();
-  if (pointclouddata_poll_thread_ && pointclouddata_poll_thread_->joinable())
-    pointclouddata_poll_thread_->join();
-  if (imudata_poll_thread_ && imudata_poll_thread_->joinable())
-    imudata_poll_thread_->join();
 }
 
 } // namespace livox_ros

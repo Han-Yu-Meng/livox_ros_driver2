@@ -34,7 +34,7 @@
 #include <iostream>
 #include <string>
 
-#include "livox_custom_msg.h"
+#include "livox_driver2_api.h"
 
 // Simple logging macros (ignore node parameter)
 #define DRIVER_DEBUG(node, ...) do { std::cout << "DEBUG: "; printf(__VA_ARGS__); std::cout << std::endl; } while(0)
@@ -43,60 +43,24 @@
 #define DRIVER_ERROR(node, ...) do { std::cerr << "ERROR: "; printf(__VA_ARGS__); std::cerr << std::endl; } while(0)
 #define DRIVER_FATAL(node, ...) do { std::cerr << "FATAL: "; printf(__VA_ARGS__); std::cerr << std::endl; } while(0)
 
-namespace rclcpp {
-// Minimal Time stub used by code that assigns timestamps
-class Time {
- public:
-	explicit Time(uint64_t) {}
-};
-
-// Publisher base and template to mimic rclcpp publishers
-class PublisherBase {
- public:
-	virtual ~PublisherBase() = default;
-};
-
-template <typename MessageT>
-class Publisher : public PublisherBase, public std::enable_shared_from_this<Publisher<MessageT>> {
- public:
-	using SharedPtr = std::shared_ptr<Publisher<MessageT>>;
-	void publish(const MessageT &) {
-		// no-op in standalone mode
-	}
-};
-
-class Node {
- public:
-	Node() = default;
-	// minimal logger placeholder
-	int get_logger() const { return 0; }
-
-	template <typename MessageT>
-	std::shared_ptr<Publisher<MessageT>> create_publisher(const std::string &, size_t) {
-		return std::make_shared<Publisher<MessageT>>();
-	}
-};
-}  // namespace rclcpp
-
 // sensor_msgs and pcl types are not available in standalone mode; provide minimal placeholders
 namespace sensor_msgs {
 namespace msg {
 
 struct Header {
-	std::string frame_id;
-	// timestamp (uses rclcpp::Time stub)
-	uint64_t stamp; // nano seconds
+std::string frame_id;
+// timestamp (uses rclcpp::Time stub)
+uint64_t stamp; // nano seconds
 };
 
 struct Imu {
-	Header header;
-	struct Vector3 { double x; double y; double z; } angular_velocity, linear_acceleration;
+Header header;
+struct Vector3 { double x; double y; double z; } angular_velocity, linear_acceleration;
 };
 
 } // namespace msg
 } // namespace sensor_msgs
 
-#include "livox_driver2_api.h"
 using ImuMsg = livox_ros::ImuMsg; // consistent name for lddc.cpp
 
 #endif // ROS2_HEADERS_H_

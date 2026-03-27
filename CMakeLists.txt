@@ -4,8 +4,8 @@ project(livox_ros_driver2 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Note: PCL removed as it's no longer used for messaging
-# find_package(PCL QUIET) 
+# Find PCL
+find_package(PCL REQUIRED)
 
 # Find Livox SDK2
 find_library(LIVOX_LIDAR_SDK_LIBRARY NAMES livox_lidar_sdk_shared livox_lidar_sdk_static HINTS /usr/local/lib)
@@ -49,4 +49,6 @@ target_link_libraries(${PROJECT_NAME}
 
 # Sample Program
 add_executable(livox_driver2_sample src/samples/sample_api.cpp)
-target_link_libraries(livox_driver2_sample ${PROJECT_NAME})
+target_include_directories(livox_driver2_sample PRIVATE ${PCL_INCLUDE_DIRS})
+target_link_libraries(livox_driver2_sample ${PROJECT_NAME} ${PCL_LIBRARIES})
+add_definitions(${PCL_DEFINITIONS})

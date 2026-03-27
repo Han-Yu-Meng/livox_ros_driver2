@@ -28,15 +28,13 @@
 #include "include/livox_ros_driver2.h"
 
 #include "include/livox_driver2_api.h"
-#include "driver_node.h"
 #include "lds.h"
 
 namespace livox_ros {
 
 /** Send pointcloud message Data to ros subscriber or save them in rosbag file */
 typedef enum {
-  kOutputToRos = 0,
-  kOutputToRosBagFile = 1,
+  kOutputToCallback = 0,
 } DestinationOfMessageOutput;
 
 /** The message type of transfer */
@@ -49,13 +47,9 @@ typedef enum {
 
 /** Type-Definitions based on ROS versions */
 // Publisher and message type mappings for standalone library
-template <typename MessageT> using Publisher = rclcpp::Publisher<MessageT>;
-using PublisherPtr = std::shared_ptr<rclcpp::PublisherBase>;
 using CustomMsg = livox_ros_driver2::CustomMsg;
 using CustomPoint = livox_ros_driver2::CustomPoint;
 using ImuMsg = livox_ros::ImuMsg; // Use API version
-
-class DriverNode;
 
 class Lddc final {
  public:
@@ -69,14 +63,11 @@ class Lddc final {
 
   void DistributePointCloudData(void);
   void DistributeImuData(void);
-  void CreateBagFile(const std::string &file_name);
   void PrepareExit(void);
 
   uint8_t GetTransferFormat(void) { return transfer_format_; }
   uint8_t IsMultiTopic(void) { return use_multi_topic_; }
-  void SetRosNode(livox_ros::DriverNode *node) { cur_node_ = node; }
 
-  // void SetRosPub(ros::Publisher *pub) { global_pub_ = pub; };  // NOT USED
   double GetPublishFrq() { return publish_frq_; }
   void SetPublishFrq(uint32_t frq) { publish_frq_ = frq; }
 
@@ -99,11 +90,6 @@ class Lddc final {
     void FillPointsToCustomMsg(CustomMsg& livox_msg, LivoxPointXyzrtlt* src_point, uint32_t num,
       uint32_t offset_time, uint32_t point_interval, uint32_t echo_num);
 
-  PublisherPtr CreatePublisher(uint8_t msg_type, std::string &topic_name, uint32_t queue_size);
-
-  PublisherPtr GetCurrentPublisher(uint8_t index);
-  PublisherPtr GetCurrentImuPublisher(uint8_t index);
-
   void PublishCustomPointData(const CustomMsg& livox_msg, const uint8_t index);
 
  private:
@@ -114,13 +100,6 @@ class Lddc final {
   double publish_frq_;
   uint32_t publish_period_ns_;
   std::string frame_id_;
-
-  PublisherPtr private_pub_[kMaxSourceLidar];
-  PublisherPtr global_pub_;
-  PublisherPtr private_imu_pub_[kMaxSourceLidar];
-  PublisherPtr global_imu_pub_;
-
-  livox_ros::DriverNode *cur_node_;
 
   CustomMsgCallback custom_cb_;
   ImuMsgCallback imu_cb_;

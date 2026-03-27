@@ -25,8 +25,11 @@
 #ifndef LIVOX_DRIVER_NODE_H
 #define LIVOX_DRIVER_NODE_H
 
-#include "include/ros_headers.h"
 #include "include/livox_driver2_api.h"
+#include <thread>
+#include <future>
+#include <string>
+#include <memory>
 
 namespace livox_ros {
 
@@ -47,15 +50,8 @@ class DriverNode final : public LivoxDriver {
   void RegisterCustomMsgCallback(CustomMsgCallback cb) override;
   void RegisterImuMsgCallback(ImuMsgCallback cb) override;
 
-  DriverNode& GetNode() noexcept;
-
   void PointCloudDataPollThread();
   void ImuDataPollThread();
-
-  template <typename MessageT>
-  std::shared_ptr<rclcpp::Publisher<MessageT>> create_publisher(const std::string &name, size_t queue_size) {
-    return node_.create_publisher<MessageT>(name, queue_size);
-  }
 
   std::unique_ptr<Lddc> lddc_ptr_;
   std::shared_ptr<std::thread> pointclouddata_poll_thread_;
@@ -64,7 +60,6 @@ class DriverNode final : public LivoxDriver {
   std::promise<void> exit_signal_;
 
  private:
-  rclcpp::Node node_;  // lightweight node stub for publisher creation and logging
   std::string config_path_;
   bool is_started_;
 };

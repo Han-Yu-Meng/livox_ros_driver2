@@ -32,9 +32,6 @@
 #include <math.h>
 #include <stdint.h>
 
-#include "include/ros_headers.h"
-
-#include "driver_node.h"
 #include "lds_lidar.h"
 
 namespace livox_ros {
@@ -50,13 +47,6 @@ Lddc::Lddc(int format, int multi_topic, int data_src, int output_type,
       frame_id_(frame_id) {
   publish_period_ns_ = kNsPerSecond / publish_frq_;
   lds_ = nullptr;
-  for (uint32_t i = 0; i < kMaxSourceLidar; ++i) {
-    private_pub_[i] = nullptr;
-    private_imu_pub_[i] = nullptr;
-  }
-  global_pub_ = nullptr;
-  global_imu_pub_ = nullptr;
-  cur_node_ = nullptr;
 }
 
 Lddc::~Lddc() {
@@ -213,10 +203,6 @@ void Lddc::PublishCustomPointData(const CustomMsg& livox_msg, const uint8_t inde
   if (custom_cb_) {
     custom_cb_(livox_msg);
   }
-  Publisher<CustomMsg>::SharedPtr publisher_ptr = std::dynamic_pointer_cast<Publisher<CustomMsg>>(GetCurrentPublisher(index));
-  if (kOutputToRos == output_type_) {
-    if (publisher_ptr) publisher_ptr->publish(livox_msg);
-  }
 }
 
 // PCL message support removed in standalone build.
@@ -249,83 +235,6 @@ void Lddc::PublishImuData(LidarImuDataQueue& imu_data_queue, const uint8_t index
   if (imu_cb_) {
     imu_cb_(imu_msg);
   }
-
-  Publisher<ImuMsg>::SharedPtr publisher_ptr = std::dynamic_pointer_cast<Publisher<ImuMsg>>(GetCurrentImuPublisher(index));
-  if (kOutputToRos == output_type_) {
-    if (publisher_ptr) publisher_ptr->publish(imu_msg);
-  }
-}
-
-std::shared_ptr<rclcpp::PublisherBase> Lddc::GetCurrentPublisher(uint8_t handle) {
-  uint32_t queue_size = kMinEthPacketQueueSize;
-  if (use_multi_topic_) {
-    if (!private_pub_[handle]) {
-      char name_str[48];
-      memset(name_str, 0, sizeof(name_str));
-
-      std::string ip_string = IpNumToString(lds_->lidars_[handle].handle);
-      snprintf(name_str, sizeof(name_str), "livox/lidar_%s",
-          ReplacePeriodByUnderline(ip_string).c_str());
-      std::string topic_name(name_str);
-      queue_size = queue_size * 2; // queue size is 64 for only one lidar
-      private_pub_[handle] = CreatePublisher(transfer_format_, topic_name, queue_size);
-    }
-    return private_pub_[handle];
-  } else {
-    if (!global_pub_) {
-      std::string topic_name("livox/lidar");
-      queue_size = queue_size * 8; // shared queue size is 256, for all lidars
-      global_pub_ = CreatePublisher(transfer_format_, topic_name, queue_size);
-    }
-    return global_pub_;
-  }
-}
-
-std::shared_ptr<rclcpp::PublisherBase> Lddc::GetCurrentImuPublisher(uint8_t handle) {
-  uint32_t queue_size = kMinEthPacketQueueSize;
-  if (use_multi_topic_) {
-    if (!private_imu_pub_[handle]) {
-      char name_str[48];
-      memset(name_str, 0, sizeof(name_str));
-      std::string ip_string = IpNumToString(lds_->lidars_[handle].handle);
-      snprintf(name_str, sizeof(name_str), "livox/imu_%s",
-          ReplacePeriodByUnderline(ip_string).c_str());
-      std::string topic_name(name_str);
-      queue_size = queue_size * 2; // queue size is 64 for only one lidar
-      private_imu_pub_[handle] = CreatePublisher(kLivoxImuMsg, topic_name, queue_size);
-    }
-    return private_imu_pub_[handle];
-  } else {
-    if (!global_imu_pub_) {
-      std::string topic_name("livox/imu");
-      queue_size = queue_size * 8; // shared queue size is 256, for all lidars
-      global_imu_pub_ = CreatePublisher(kLivoxImuMsg, topic_name, queue_size);
-    }
-    return global_imu_pub_;
-  }
-    return global_imu_pub_;
-  }
-}
-
-std::shared_ptr<rclcpp::PublisherBase> Lddc::CreatePublisher(uint8_t msg_type,
-    std::string &topic_name, uint32_t queue_size) {
-  if (!cur_node_) {
-    return PublisherPtr(nullptr);
-  }
-  if (kLivoxCustomMsg == msg_type) {
-    DRIVER_INFO(*cur_node_, "%s publish use livox custom format", topic_name.c_str());
-    return cur_node_->create_publisher<CustomMsg>(topic_name, queue_size);
-  } else if (kLivoxImuMsg == msg_type) {
-    DRIVER_INFO(*cur_node_, "%s publish use imu format", topic_name.c_str());
-    return cur_node_->create_publisher<ImuMsg>(topic_name, queue_size);
-  } else {
-    PublisherPtr null_publisher(nullptr);
-    return null_publisher;
-  }
-}
-
-void Lddc::CreateBagFile(const std::string &file_name) {
-  (void)file_name; // bag not supported in standalone build
 }
 
 }  // namespace livox_ros

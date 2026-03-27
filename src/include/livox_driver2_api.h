@@ -33,6 +33,8 @@
 // Redefine or include the POD Imu message
 namespace livox_ros {
 
+using CustomMsg = livox_ros_driver2::CustomMsg;
+
 #ifndef SENSOR_MSGS_IMU_STRUCT_
 #define SENSOR_MSGS_IMU_STRUCT_
 struct ImuHeader {
