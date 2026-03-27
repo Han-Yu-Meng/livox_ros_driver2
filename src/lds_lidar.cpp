@@ -201,7 +201,6 @@ int LdsLidar::DeInitLdsLidar(void) {
 
   if (lidar_summary_info_.lidar_type & kLivoxLidarType) {
     LivoxLidarSdkUninit();
-    printf("Livox Lidar SDK Deinit completely!\n");
   }
 
   return 0;

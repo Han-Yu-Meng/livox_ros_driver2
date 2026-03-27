@@ -19,35 +19,43 @@ const uint64_t SAVE_INTERVAL_NS = 2000000000ULL; // 2 seconds in nanoseconds
 void OnCustomMsg(const livox_ros::CustomMsg& msg) {
   std::lock_guard<std::mutex> lock(g_mtx);
   
+  // Get current system time in nanoseconds
+  auto now = std::chrono::high_resolution_clock::now();
+  uint64_t now_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
+  
+  // Calculate delay (assuming msg.stamp is also in nanoseconds since epoch)
+  double delay_ms = static_cast<double>(now_ns - msg.stamp) / 1000000.0;
+
   if (g_last_save_time == 0) {
     g_last_save_time = msg.stamp;
   }
 
-  for (const auto& p : msg.points) {
-    pcl::PointXYZI pt;
-    pt.x = p.x;
-    pt.y = p.y;
-    pt.z = p.z;
-    pt.intensity = static_cast<float>(p.reflectivity);
-    g_accumulated_cloud.push_back(pt);
-  }
+  // for (const auto& p : msg.points) {
+  //   pcl::PointXYZI pt;
+  //   pt.x = p.x;
+  //   pt.y = p.y;
+  //   pt.z = p.z;
+  //   pt.intensity = static_cast<float>(p.reflectivity);
+  //   g_accumulated_cloud.push_back(pt);
+  // }
 
-  if (msg.stamp - g_last_save_time >= SAVE_INTERVAL_NS) {
-    if (!g_accumulated_cloud.empty()) {
-      std::string filename = std::to_string(g_file_count++) + ".pcd";
-      pcl::io::savePCDFileBinary(filename, g_accumulated_cloud);
-      std::cout << "Saved " << filename << " with " << g_accumulated_cloud.size() << " points." << std::endl;
-      g_accumulated_cloud.clear();
-      g_last_save_time = msg.stamp;
-    }
-  }
+  // if (msg.stamp - g_last_save_time >= SAVE_INTERVAL_NS) {
+  //   if (!g_accumulated_cloud.empty()) {
+  //     std::string filename = std::to_string(g_file_count++) + ".pcd";
+  //     pcl::io::savePCDFileBinary(filename, g_accumulated_cloud);
+  //     std::cout << "Saved " << filename << " with " << g_accumulated_cloud.size() << " points." << std::endl;
+  //     g_accumulated_cloud.clear();
+  //     g_last_save_time = msg.stamp;
+  //   }
+  // }
 
   static int count = 0;
   if (count++ % 10 == 0) {
     std::cout << "Received CustomMsg: "
               << "timestamp: " << msg.stamp << ", "
               << "point_num: " << msg.point_num 
-              << " (Current accumulation: " << g_accumulated_cloud.size() << " points)" << std::endl;
+              << " (Current accumulation: " << g_accumulated_cloud.size() << " points), "
+              << "System Latency: " << std::fixed << std::setprecision(3) << delay_ms << " ms" << std::endl;
   }
 }
 

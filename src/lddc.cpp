@@ -51,7 +51,6 @@ Lddc::Lddc(int format, int multi_topic, int data_src, int output_type,
 
 Lddc::~Lddc() {
   PrepareExit();
-  std::cout << "lddc destroy" << std::endl;
 }
 
 int Lddc::RegisterLds(Lds *lds) {

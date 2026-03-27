@@ -83,7 +83,6 @@ int8_t CacheIndex::GetIndex(const uint8_t livox_lidar_type, const uint32_t handl
     index = map_index_[key];
     return 0;
   }
-  printf("Can not get index, the livox lidar type:%u, handle:%u\n", livox_lidar_type, handle);
   return -1;
 }
 
