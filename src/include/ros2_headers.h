@@ -22,31 +22,81 @@
 // SOFTWARE.
 //
 
-// Denoting headers specifically used for building ROS1 Driver.
+// Lightweight non-ROS stubs and logging for standalone build
 
 #ifndef ROS2_HEADERS_H_
 #define ROS2_HEADERS_H_
 
 #include <thread>
 #include <future>
+#include <memory>
+#include <functional>
+#include <iostream>
+#include <string>
 
-#include <rclcpp/rclcpp.hpp>
-#include <pcl_conversions/pcl_conversions.h>
-#include <sensor_msgs/msg/point_cloud2.hpp>
-#include <sensor_msgs/msg/imu.hpp>
-#include "livox_ros_driver2/msg/custom_point.hpp"
-#include "livox_ros_driver2/msg/custom_msg.hpp"
+#include "livox_custom_msg.h"
 
-#define DRIVER_DEBUG(node, ...) RCLCPP_DEBUG((node).get_logger(), __VA_ARGS__)
-#define DRIVER_INFO(node, ...) RCLCPP_INFO((node).get_logger(), __VA_ARGS__)
-#define DRIVER_WARN(node, ...) RCLCPP_WARN((node).get_logger(), __VA_ARGS__)
-#define DRIVER_ERROR(node, ...) RCLCPP_ERROR((node).get_logger(), __VA_ARGS__)
-#define DRIVER_FATAL(node, ...) RCLCPP_FATAL((node).get_logger(), __VA_ARGS__)
+// Simple logging macros (ignore node parameter)
+#define DRIVER_DEBUG(node, ...) do { std::cout << "DEBUG: "; printf(__VA_ARGS__); std::cout << std::endl; } while(0)
+#define DRIVER_INFO(node, ...) do { std::cout << "INFO: "; printf(__VA_ARGS__); std::cout << std::endl; } while(0)
+#define DRIVER_WARN(node, ...) do { std::cout << "WARN: "; printf(__VA_ARGS__); std::cout << std::endl; } while(0)
+#define DRIVER_ERROR(node, ...) do { std::cerr << "ERROR: "; printf(__VA_ARGS__); std::cerr << std::endl; } while(0)
+#define DRIVER_FATAL(node, ...) do { std::cerr << "FATAL: "; printf(__VA_ARGS__); std::cerr << std::endl; } while(0)
 
-#define DRIVER_DEBUG_EXTRA(node, EXTRA, ...) RCLCPP_DEBUG_##EXTRA((node).get_logger(), __VA_ARGS__)
-#define DRIVER_INFO_EXTRA(node, EXTRA, ...) RCLCPP_INFO_##EXTRA((node).get_logger(), __VA_ARGS__)
-#define DRIVER_WARN_EXTRA(node, EXTRA, ...) RCLCPP_WARN_##EXTRA((node).get_logger(), __VA_ARGS__)
-#define DRIVER_ERROR_EXTRA(node, EXTRA, ...) RCLCPP_ERROR_##EXTRA((node).get_logger(), __VA_ARGS__)
-#define DRIVER_FATAL_EXTRA(node, EXTRA, ...) RCLCPP_FATAL_##EXTRA((node).get_logger(), __VA_ARGS__)
+namespace rclcpp {
+// Minimal Time stub used by code that assigns timestamps
+class Time {
+ public:
+	explicit Time(uint64_t) {}
+};
+
+// Publisher base and template to mimic rclcpp publishers
+class PublisherBase {
+ public:
+	virtual ~PublisherBase() = default;
+};
+
+template <typename MessageT>
+class Publisher : public PublisherBase, public std::enable_shared_from_this<Publisher<MessageT>> {
+ public:
+	using SharedPtr = std::shared_ptr<Publisher<MessageT>>;
+	void publish(const MessageT &) {
+		// no-op in standalone mode
+	}
+};
+
+class Node {
+ public:
+	Node() = default;
+	// minimal logger placeholder
+	int get_logger() const { return 0; }
+
+	template <typename MessageT>
+	std::shared_ptr<Publisher<MessageT>> create_publisher(const std::string &, size_t) {
+		return std::make_shared<Publisher<MessageT>>();
+	}
+};
+}  // namespace rclcpp
+
+// sensor_msgs and pcl types are not available in standalone mode; provide minimal placeholders
+namespace sensor_msgs {
+namespace msg {
+
+struct Header {
+	std::string frame_id;
+	// timestamp (uses rclcpp::Time stub)
+	uint64_t stamp; // nano seconds
+};
+
+struct Imu {
+	Header header;
+	struct Vector3 { double x; double y; double z; } angular_velocity, linear_acceleration;
+};
+
+} // namespace msg
+} // namespace sensor_msgs
+
+#include "livox_driver2_api.h"
+using ImuMsg = livox_ros::ImuMsg; // consistent name for lddc.cpp
 
 #endif // ROS2_HEADERS_H_

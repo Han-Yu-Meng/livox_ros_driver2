@@ -26,52 +26,48 @@
 #define LIVOX_DRIVER_NODE_H
 
 #include "include/ros_headers.h"
+#include "include/livox_driver2_api.h"
 
 namespace livox_ros {
 
 class Lddc;
 
-#ifdef BUILDING_ROS1
-class DriverNode final : public ros::NodeHandle {
+// Standalone DriverNode (non-ROS) used by the C++ library
+class DriverNode final : public LivoxDriver {
  public:
-  DriverNode() = default;
+  DriverNode();
   DriverNode(const DriverNode &) = delete;
   ~DriverNode();
   DriverNode &operator=(const DriverNode &) = delete;
+
+  // API implementations
+  bool LoadConfig(const std::string& config_path) override;
+  bool Start() override;
+  void Stop() override;
+  void RegisterCustomMsgCallback(CustomMsgCallback cb) override;
+  void RegisterImuMsgCallback(ImuMsgCallback cb) override;
 
   DriverNode& GetNode() noexcept;
 
   void PointCloudDataPollThread();
   void ImuDataPollThread();
 
+  template <typename MessageT>
+  std::shared_ptr<rclcpp::Publisher<MessageT>> create_publisher(const std::string &name, size_t queue_size) {
+    return node_.create_publisher<MessageT>(name, queue_size);
+  }
+
   std::unique_ptr<Lddc> lddc_ptr_;
   std::shared_ptr<std::thread> pointclouddata_poll_thread_;
   std::shared_ptr<std::thread> imudata_poll_thread_;
   std::shared_future<void> future_;
   std::promise<void> exit_signal_;
-};
-
-#elif defined BUILDING_ROS2
-class DriverNode final : public rclcpp::Node {
- public:
-  explicit DriverNode(const rclcpp::NodeOptions& options);
-  DriverNode(const DriverNode &) = delete;
-  ~DriverNode();
-  DriverNode &operator=(const DriverNode &) = delete;
-
-  DriverNode& GetNode() noexcept;
 
  private:
-  void PointCloudDataPollThread();
-  void ImuDataPollThread();
-
-  std::unique_ptr<Lddc> lddc_ptr_;
-  std::shared_ptr<std::thread> pointclouddata_poll_thread_;
-  std::shared_ptr<std::thread> imudata_poll_thread_;
-  std::shared_future<void> future_;
-  std::promise<void> exit_signal_;
+  rclcpp::Node node_;  // lightweight node stub for publisher creation and logging
+  std::string config_path_;
+  bool is_started_;
 };
-#endif
 
 } // namespace livox_ros
 
