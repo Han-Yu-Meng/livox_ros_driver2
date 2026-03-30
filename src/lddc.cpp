@@ -148,24 +148,25 @@ void Lddc::PublishCustomPointcloud(LidarDataQueue *queue, uint8_t index) {
 // PointCloud2 publishing removed in standalone build.
 
 void Lddc::InitCustomMsg(CustomMsg& livox_msg, const StoragePacket& pkg, uint8_t index) {
-  livox_msg.frame_id.assign(frame_id_);
+  livox_msg.header.frame_id = frame_id_;
 
   // standalone: no seq
 
-  uint64_t timestamp = 0;
-  if (!pkg.points.empty()) {
-    timestamp = pkg.base_time;
-  }
-  livox_msg.timebase = timestamp;
+  uint32_t sec = pkg.base_time / 1000000000ULL;
+  uint32_t nanosec = pkg.base_time % 1000000000ULL;
+  livox_msg.header.stamp.sec = sec;
+  livox_msg.header.stamp.nanosec = nanosec;
 
-  livox_msg.stamp = timestamp;
+  livox_msg.timebase = pkg.base_time;
 
   livox_msg.point_num = pkg.points_num;
-  if (lds_->lidars_[index].lidar_type == kLivoxLidarType) {
-    livox_msg.lidar_id = lds_->lidars_[index].handle;
-  } else {
-    printf("Init custom msg lidar id failed, the index:%u.\n", index);
-    livox_msg.lidar_id = 0;
+  if (index < kMaxSourceLidar) {
+    if (lds_->lidars_[index].lidar_type == kLivoxLidarType) {
+      livox_msg.lidar_id = lds_->lidars_[index].handle;
+    } else {
+      printf("Init custom msg lidar id failed, the index:%u.\n", index);
+      livox_msg.lidar_id = 0;
+    }
   }
 }
 
@@ -198,7 +199,10 @@ void Lddc::InitImuMsg(const ImuData& imu_data, ImuMsg& imu_msg, uint64_t& timest
   imu_msg.header.frame_id = "livox_frame";
 
   timestamp = imu_data.time_stamp;
-  imu_msg.header.stamp = timestamp;  // direct assign uint64_t
+  uint32_t sec = timestamp / 1000000000ULL;
+  uint32_t nanosec = timestamp % 1000000000ULL;
+  imu_msg.header.stamp.sec = sec;
+  imu_msg.header.stamp.nanosec = nanosec;
 
   imu_msg.angular_velocity.x = imu_data.gyro_x;
   imu_msg.angular_velocity.y = imu_data.gyro_y;

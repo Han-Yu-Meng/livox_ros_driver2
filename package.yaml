@@ -1,0 +1,10 @@
+name: "livox_driver2"
+version: "0.1.0"
+description: "Driver for Livox LiDARs"
+maintainers:
+  - name: "fins"
+    email: "fins@sjtu.edu.cn"
+depends:
+  PCL: "system"
+licenses:
+  - "MIT"

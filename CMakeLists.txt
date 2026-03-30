@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
-project(livox_ros_driver2 LANGUAGES CXX)
+project(livox_driver2 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find PCL
@@ -12,7 +12,7 @@ find_library(LIVOX_LIDAR_SDK_LIBRARY NAMES livox_lidar_sdk_shared livox_lidar_sd
 find_path(LIVOX_LIDAR_SDK_INCLUDE_DIR NAMES "livox_lidar_api.h" "livox_lidar_def.h" HINTS /usr/local/include /usr/include)
 
 # Core Driver Library
-add_library(${PROJECT_NAME} SHARED
+add_library(${PROJECT_NAME}_core SHARED
   src/livox_ros_driver2.cpp
   src/lddc.cpp
   src/driver_node.cpp
@@ -33,22 +33,43 @@ add_library(${PROJECT_NAME} SHARED
   src/call_back/livox_lidar_callback.cpp
 )
 
-target_include_directories(${PROJECT_NAME} PUBLIC
+target_include_directories(${PROJECT_NAME}_core PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/3rdparty>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/livox_msg/include>
 )
 
 if(LIVOX_LIDAR_SDK_INCLUDE_DIR)
-  target_include_directories(${PROJECT_NAME} PRIVATE ${LIVOX_LIDAR_SDK_INCLUDE_DIR})
+  target_include_directories(${PROJECT_NAME}_core PRIVATE ${LIVOX_LIDAR_SDK_INCLUDE_DIR})
 endif()
 
-target_link_libraries(${PROJECT_NAME}
+find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+
+target_link_libraries(${PROJECT_NAME}_core PUBLIC
   ${LIVOX_LIDAR_SDK_LIBRARY}
   pthread
+  std_msgs::std_msgs__rosidl_generator_cpp
+  sensor_msgs::sensor_msgs__rosidl_generator_cpp
 )
 
-# Sample Program
-add_executable(livox_driver2_sample src/samples/sample_api.cpp)
-target_include_directories(livox_driver2_sample PRIVATE ${PCL_INCLUDE_DIRS})
-target_link_libraries(livox_driver2_sample ${PROJECT_NAME} ${PCL_LIBRARIES})
+# FINS node
+fins_add_node(${PROJECT_NAME} SHARED 
+  src/node/node.cpp
+)
+
+target_include_directories(${PROJECT_NAME} PRIVATE 
+  ${PCL_INCLUDE_DIRS}
+)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE
+  ${PROJECT_NAME}_core
+  ${PCL_LIBRARIES}
+)
+
 add_definitions(${PCL_DEFINITIONS})
+
+fins_link_ros_dependencies(${PROJECT_NAME}
+  std_msgs
+  sensor_msgs
+)

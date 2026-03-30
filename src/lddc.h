@@ -25,8 +25,9 @@
 #ifndef LIVOX_ROS_DRIVER2_LDDC_H_
 #define LIVOX_ROS_DRIVER2_LDDC_H_
 
-#include "include/livox_ros_driver2.h"
+#include "livox_ros_driver2/msg/custom_msg.hpp"
 
+#include "include/livox_ros_driver2.h"
 #include "include/livox_driver2_api.h"
 #include "lds.h"
 
@@ -47,8 +48,8 @@ typedef enum {
 
 /** Type-Definitions based on ROS versions */
 // Publisher and message type mappings for standalone library
-using CustomMsg = livox_ros_driver2::CustomMsg;
-using CustomPoint = livox_ros_driver2::CustomPoint;
+using CustomMsg = livox_ros_driver2::msg::CustomMsg;
+using CustomPoint = livox_ros_driver2::msg::CustomPoint;
 using ImuMsg = livox_ros::ImuMsg; // Use API version
 
 class Lddc final {

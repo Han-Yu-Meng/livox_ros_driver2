@@ -28,30 +28,14 @@
 #include <memory>
 #include <string>
 #include <functional>
-#include "livox_custom_msg.h"
+#include "livox_ros_driver2/msg/custom_msg.hpp"
+#include "sensor_msgs/msg/imu.hpp"
 
 // Redefine or include the POD Imu message
 namespace livox_ros {
 
-using CustomMsg = livox_ros_driver2::CustomMsg;
-
-#ifndef SENSOR_MSGS_IMU_STRUCT_
-#define SENSOR_MSGS_IMU_STRUCT_
-struct ImuHeader {
-  std::string frame_id;
-  uint64_t stamp; // nano seconds
-};
-struct ImuVector3 {
-  double x;
-  double y;
-  double z;
-};
-struct ImuMsg {
-  ImuHeader header;
-  ImuVector3 angular_velocity;
-  ImuVector3 linear_acceleration;
-};
-#endif
+using CustomMsg = livox_ros_driver2::msg::CustomMsg;
+using ImuMsg = sensor_msgs::msg::Imu;
 
 using CustomMsgCallback = std::function<void(const CustomMsg& msg)>;
 using ImuMsgCallback = std::function<void(const ImuMsg& msg)>;
