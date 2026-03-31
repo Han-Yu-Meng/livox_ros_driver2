@@ -20,8 +20,8 @@ public:
     set_category("Sensor>Lidar");
 
     // FINS Outputs
-    register_output<livox_ros::CustomMsg>("custom_msg");
-    register_output<livox_ros::ImuMsg>("imu_msg");
+    register_output<livox_ros::ImuMsg>("imu");
+    register_output<livox_ros::CustomMsg>("lidar");
 
     // Parameters
     register_parameter<std::string>("config_path", &LivoxDriverNode::on_config_path_changed, "MID360_config.json");
@@ -88,17 +88,18 @@ private:
 
   void on_custom_msg(const livox_ros::CustomMsg& msg) {
     // Publish via FINS
-    send("custom_msg", msg, fins::now());
-
-    // Maintain existing PCD saving logic for debug/utility
-    std::lock_guard<std::mutex> lock(mtx_);
+    send("lidar", msg, fins::now());
     
-    // Calculate delay using msg.header.stamp
     uint64_t msg_ns = static_cast<uint64_t>(msg.header.stamp.sec) * 1000000000ULL + msg.header.stamp.nanosec;
     auto now = std::chrono::high_resolution_clock::now();
     uint64_t now_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
     double delay_ms = static_cast<double>(now_ns - msg_ns) / 1000000.0;
-
+     
+    /*
+    // Maintain existing PCD saving logic for debug/utility
+    std::lock_guard<std::mutex> lock(mtx_);
+    
+    // Calculate delay using msg.header.stamp
     if (last_save_time_ == 0) {
       last_save_time_ = msg_ns;
     }
@@ -120,7 +121,7 @@ private:
         accumulated_cloud_.clear();
         last_save_time_ = msg_ns;
       }
-    }
+    }*/
 
     static int count = 0;
     if (count++ % 10 == 0) {
@@ -130,7 +131,7 @@ private:
   }
 
   void on_imu_msg(const livox_ros::ImuMsg& msg) {
-    send("imu_msg", msg, fins::now());
+    send("imu", msg, fins::now());
     static int count = 0;
     if (count++ % 100 == 0) {
       logger->debug("Received ImuMsg (every 100th): acc: [{}, {}, {}]", 
