@@ -29,6 +29,9 @@ public:
 
     // Parameters
     register_parameter<std::string>("config_path", &LivoxDriverNode::on_config_path_changed, "/path/to/MID360_config.json");
+    register_parameter<int>("multi_topic", &LivoxDriverNode::on_multi_topic_changed, 0);
+    register_parameter<double>("publish_freq", &LivoxDriverNode::on_publish_freq_changed, 10.0);
+    register_parameter<std::string>("frame_id", &LivoxDriverNode::on_frame_id_changed, "livox_frame");
   }
 
   void initialize() override {
@@ -73,12 +76,41 @@ private:
     if (config_path_ == v) return;
     config_path_ = v;
     logger->info("Config path changed to {}. Reloading...", v);
+    update_driver_parameters();
     load_and_start();
+  }
+
+  void on_multi_topic_changed(int v) {
+    if (multi_topic_ == v) return;
+    multi_topic_ = v;
+    logger->info("Multi-topic changed to {}. Updating...", v);
+    update_driver_parameters();
+  }
+
+  void on_publish_freq_changed(double v) {
+    if (publish_freq_ == v) return;
+    publish_freq_ = v;
+    logger->info("Publish frequency changed to {}. Updating...", v);
+    update_driver_parameters();
+  }
+
+  void on_frame_id_changed(const std::string& v) {
+    if (frame_id_ == v) return;
+    frame_id_ = v;
+    logger->info("Frame ID changed to {}. Updating...", v);
+    update_driver_parameters();
+  }
+
+  void update_driver_parameters() {
+    if (driver_) {
+      driver_->SetParameters(multi_topic_, publish_freq_, frame_id_);
+    }
   }
 
   void load_and_start() {
     if (!driver_) return;
     driver_->Stop();
+    update_driver_parameters();
     if (!driver_->LoadConfig(config_path_)) {
       logger->error("Failed to load config: {}", config_path_);
       return;
@@ -170,6 +202,9 @@ private:
 private:
   std::unique_ptr<livox_ros::LivoxDriver> driver_;
   std::string config_path_;
+  int multi_topic_ = 0;
+  double publish_freq_ = 10.0;
+  std::string frame_id_ = "livox_frame";
   
   std::mutex mtx_;
   pcl::PointCloud<pcl::PointXYZI> accumulated_cloud_;

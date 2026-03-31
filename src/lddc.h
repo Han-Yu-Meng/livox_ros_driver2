@@ -70,7 +70,10 @@ class Lddc final {
   uint8_t IsMultiTopic(void) { return use_multi_topic_; }
 
   double GetPublishFrq() { return publish_frq_; }
-  void SetPublishFrq(uint32_t frq) { publish_frq_ = frq; }
+  void SetPublishFrq(double frq) { publish_frq_ = frq; publish_period_ns_ = 1000000000ULL / publish_frq_; }
+
+  void SetMultiTopic(int multi_topic) { use_multi_topic_ = multi_topic; }
+  void SetFrameId(const std::string& frame_id) { frame_id_ = frame_id; }
 
  public:
   Lds *lds_;

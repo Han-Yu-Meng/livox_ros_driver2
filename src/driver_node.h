@@ -45,6 +45,7 @@ class DriverNode final : public LivoxDriver {
 
   // API implementations
   bool LoadConfig(const std::string& config_path) override;
+  void SetParameters(int multi_topic, double publish_freq, const std::string& frame_id) override;
   bool Start() override;
   void Stop() override;
   void RegisterCustomMsgCallback(CustomMsgCallback cb) override;

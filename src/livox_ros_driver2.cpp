@@ -64,6 +64,14 @@ bool DriverNode::LoadConfig(const std::string& config_path) {
   return true;
 }
 
+void DriverNode::SetParameters(int multi_topic, double publish_freq, const std::string& frame_id) {
+  if (lddc_ptr_) {
+    lddc_ptr_->SetMultiTopic(multi_topic);
+    lddc_ptr_->SetPublishFrq(publish_freq);
+    lddc_ptr_->SetFrameId(frame_id);
+  }
+}
+
 bool DriverNode::Start() {
   if (is_started_) return true;
   if (config_path_.empty()) {

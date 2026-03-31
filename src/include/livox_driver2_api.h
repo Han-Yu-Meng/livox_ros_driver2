@@ -48,7 +48,10 @@ class LivoxDriver {
   // 1. 加载配置接口
   virtual bool LoadConfig(const std::string& config_path) = 0;
 
-  // 2. 启动/暂停接口
+  // 2. 配置参数接口
+  virtual void SetParameters(int multi_topic, double publish_freq, const std::string& frame_id) = 0;
+
+  // 3. 启动/暂停接口
   virtual bool Start() = 0;
   virtual void Stop() = 0;
 
