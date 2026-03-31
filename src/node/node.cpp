@@ -19,8 +19,8 @@ class LivoxDriverNode : public fins::Node {
 public:
   void define() override {
     set_name("LivoxDriverNode");
-    set_description("Livox Lidar driver node integrated with FINS framework.");
-    set_category("Sensor>Lidar");
+    set_description("Livox Lidar driver node.");
+    set_category("Driver");
 
     // FINS Outputs
     register_output<livox_ros::ImuMsg>("imu");
@@ -28,22 +28,22 @@ public:
     register_output<sensor_msgs::msg::PointCloud2>("lidar_standard");
 
     // Parameters
-    register_parameter<std::string>("config_path", &LivoxDriverNode::on_config_path_changed, "MID360_config.json");
+    register_parameter<std::string>("config_path", &LivoxDriverNode::on_config_path_changed, "/path/to/MID360_config.json");
   }
 
   void initialize() override {
     driver_ = livox_ros::LivoxDriver::Create();
     
     driver_->RegisterCustomMsgCallback([this](const livox_ros::CustomMsg& msg) {
-        this->on_custom_msg(msg);
+      this->on_custom_msg(msg);
     });
     
     driver_->RegisterImuMsgCallback([this](const livox_ros::ImuMsg& msg) {
-        this->on_imu_msg(msg);
+      this->on_imu_msg(msg);
     });
 
     if (!config_path_.empty()) {
-        load_and_start();
+      load_and_start();
     }
   }
 
@@ -53,7 +53,7 @@ public:
 
   void pause() override {
     if (driver_) {
-        driver_->Stop();
+      driver_->Stop();
     }
   }
 
@@ -64,7 +64,7 @@ public:
 
   ~LivoxDriverNode() {
     if (driver_) {
-        driver_->Stop();
+      driver_->Stop();
     }
   }
 
@@ -91,25 +91,29 @@ private:
   }
 
   void on_custom_msg(const livox_ros::CustomMsg& msg) {
-    // Publish via FINS
-    send("lidar", msg, fins::now());
-
-    // Convert to standard PointCloud2
-    pcl::PointCloud<pcl::PointXYZI> pcl_cloud;
-    pcl_cloud.reserve(msg.points.size());
-    for (const auto& p : msg.points) {
-      pcl::PointXYZI pt;
-      pt.x = p.x;
-      pt.y = p.y;
-      pt.z = p.z;
-      pt.intensity = static_cast<float>(p.reflectivity);
-      pcl_cloud.push_back(pt);
+    if (required("lidar")) {
+      // Livox Custom Msg
+      send("lidar", msg, fins::from_ros_time(msg.header.stamp));
     }
 
-    sensor_msgs::msg::PointCloud2 standard_msg;
-    pcl::toROSMsg(pcl_cloud, standard_msg);
-    standard_msg.header = msg.header;
-    send("lidar_standard", standard_msg, fins::now());
+    if (required("lidar_standard")) {
+      // Convert to standard PointCloud2
+      pcl::PointCloud<pcl::PointXYZI> pcl_cloud;
+      pcl_cloud.reserve(msg.points.size());
+      for (const auto& p : msg.points) {
+        pcl::PointXYZI pt;
+        pt.x = p.x;
+        pt.y = p.y;
+        pt.z = p.z;
+        pt.intensity = static_cast<float>(p.reflectivity);
+        pcl_cloud.push_back(pt);
+      }
+
+      sensor_msgs::msg::PointCloud2 standard_msg;
+      pcl::toROSMsg(pcl_cloud, standard_msg);
+      standard_msg.header = msg.header;
+      send("lidar_standard", standard_msg, fins::from_ros_time(msg.header.stamp));
+    }
     
     uint64_t msg_ns = static_cast<uint64_t>(msg.header.stamp.sec) * 1000000000ULL + msg.header.stamp.nanosec;
     auto now = std::chrono::high_resolution_clock::now();
@@ -152,7 +156,10 @@ private:
   }
 
   void on_imu_msg(const livox_ros::ImuMsg& msg) {
-    send("imu", msg, fins::now());
+    if (required("imu")) {
+      send("imu", msg, fins::from_ros_time(msg.header.stamp));
+    }
+
     static int count = 0;
     if (count++ % 100 == 0) {
       logger->debug("Received ImuMsg (every 100th): acc: [{}, {}, {}]", 
