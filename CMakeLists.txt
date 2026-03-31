@@ -5,7 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find PCL
-find_package(PCL REQUIRED)
+find_package(PCL       REQUIRED)
+find_package(livox_msg REQUIRED)
 
 # Find Livox SDK2
 find_library(LIVOX_LIDAR_SDK_LIBRARY NAMES livox_lidar_sdk_shared livox_lidar_sdk_static HINTS /usr/local/lib)
@@ -36,7 +37,6 @@ add_library(${PROJECT_NAME}_core SHARED
 target_include_directories(${PROJECT_NAME}_core PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/3rdparty>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/livox_msg/include>
 )
 
 if(LIVOX_LIDAR_SDK_INCLUDE_DIR)
@@ -51,6 +51,7 @@ target_link_libraries(${PROJECT_NAME}_core PUBLIC
   pthread
   std_msgs::std_msgs__rosidl_generator_cpp
   sensor_msgs::sensor_msgs__rosidl_generator_cpp
+  livox_msg::livox_msg
 )
 
 # FINS node
