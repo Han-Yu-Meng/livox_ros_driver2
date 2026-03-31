@@ -72,4 +72,5 @@ add_definitions(${PCL_DEFINITIONS})
 fins_link_ros_dependencies(${PROJECT_NAME}
   std_msgs
   sensor_msgs
+  pcl_conversions
 )

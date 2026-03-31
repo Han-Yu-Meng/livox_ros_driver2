@@ -8,6 +8,9 @@
 #include <vector>
 #include <atomic>
 
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <pcl_conversions/pcl_conversions.h>
+
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/io/pcd_io.h>
@@ -22,6 +25,7 @@ public:
     // FINS Outputs
     register_output<livox_ros::ImuMsg>("imu");
     register_output<livox_ros::CustomMsg>("lidar");
+    register_output<sensor_msgs::msg::PointCloud2>("lidar_standard");
 
     // Parameters
     register_parameter<std::string>("config_path", &LivoxDriverNode::on_config_path_changed, "MID360_config.json");
@@ -89,6 +93,23 @@ private:
   void on_custom_msg(const livox_ros::CustomMsg& msg) {
     // Publish via FINS
     send("lidar", msg, fins::now());
+
+    // Convert to standard PointCloud2
+    pcl::PointCloud<pcl::PointXYZI> pcl_cloud;
+    pcl_cloud.reserve(msg.points.size());
+    for (const auto& p : msg.points) {
+      pcl::PointXYZI pt;
+      pt.x = p.x;
+      pt.y = p.y;
+      pt.z = p.z;
+      pt.intensity = static_cast<float>(p.reflectivity);
+      pcl_cloud.push_back(pt);
+    }
+
+    sensor_msgs::msg::PointCloud2 standard_msg;
+    pcl::toROSMsg(pcl_cloud, standard_msg);
+    standard_msg.header = msg.header;
+    send("lidar_standard", standard_msg, fins::now());
     
     uint64_t msg_ns = static_cast<uint64_t>(msg.header.stamp.sec) * 1000000000ULL + msg.header.stamp.nanosec;
     auto now = std::chrono::high_resolution_clock::now();
