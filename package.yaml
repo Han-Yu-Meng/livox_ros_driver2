@@ -10,15 +10,15 @@ depends:
   std_msgs: "system"
   sensor_msgs: "system"
   pcl_conversions: "system"
-  livox_msg: "1.0.0"
+  livox_msg: "1.0.1"
 
 recipes:
   livox_msg:
     git: "https://github.com/Han-Yu-Meng/livox_msg.git"
     build_system: "cmake"
     versions:
-      "1.0.0":
-        tag: "v1.0.0"
+      "1.0.1":
+        tag: "v1.0.1"
         
 licenses:
   - "MIT"

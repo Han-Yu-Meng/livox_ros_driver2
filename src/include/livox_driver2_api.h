@@ -28,13 +28,13 @@
 #include <memory>
 #include <string>
 #include <functional>
-#include "livox_ros_driver2/msg/custom_msg.hpp"
+#include "livox_driver2/msg/custom_msg.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 
 // Redefine or include the POD Imu message
 namespace livox_ros {
 
-using CustomMsg = livox_ros_driver2::msg::CustomMsg;
+using CustomMsg = livox_driver2::msg::CustomMsg;
 using ImuMsg = sensor_msgs::msg::Imu;
 
 using CustomMsgCallback = std::function<void(const CustomMsg& msg)>;
