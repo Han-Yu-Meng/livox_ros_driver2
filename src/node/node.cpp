@@ -22,12 +22,10 @@ public:
     set_description("Livox Lidar driver node.");
     set_category("Driver");
 
-    // FINS Outputs
     register_output<livox_ros::ImuMsg>("imu");
     register_output<livox_ros::CustomMsg>("lidar");
     register_output<sensor_msgs::msg::PointCloud2>("lidar_standard");
 
-    // Parameters
     register_parameter<std::string>("config_path", &LivoxDriverNode::on_config_path_changed, "/path/to/MID360_config.json");
     register_parameter<int>("multi_topic", &LivoxDriverNode::on_multi_topic_changed, 0);
     register_parameter<double>("publish_freq", &LivoxDriverNode::on_publish_freq_changed, 10.0);
@@ -124,12 +122,10 @@ private:
 
   void on_custom_msg(const livox_ros::CustomMsg& msg) {
     if (required("lidar")) {
-      // Livox Custom Msg
       send("lidar", msg, fins::from_ros_time(msg.header.stamp));
     }
 
     if (required("lidar_standard")) {
-      // Convert to standard PointCloud2
       pcl::PointCloud<pcl::PointXYZI> pcl_cloud;
       pcl_cloud.reserve(msg.points.size());
       for (const auto& p : msg.points) {
@@ -147,10 +143,10 @@ private:
       send("lidar_standard", standard_msg, fins::from_ros_time(msg.header.stamp));
     }
     
-    uint64_t msg_ns = static_cast<uint64_t>(msg.header.stamp.sec) * 1000000000ULL + msg.header.stamp.nanosec;
-    auto now = std::chrono::high_resolution_clock::now();
-    uint64_t now_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-    double delay_ms = static_cast<double>(now_ns - msg_ns) / 1000000.0;
+    // uint64_t msg_ns = static_cast<uint64_t>(msg.header.stamp.sec) * 1000000000ULL + msg.header.stamp.nanosec;
+    // auto now = std::chrono::high_resolution_clock::now();
+    // uint64_t now_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
+    // double delay_ms = static_cast<double>(now_ns - msg_ns) / 1000000.0;
      
     /*
     // Maintain existing PCD saving logic for debug/utility
@@ -180,11 +176,11 @@ private:
       }
     }*/
 
-    static int count = 0;
-    if (count++ % 10 == 0) {
-      logger->debug("Received CustomMsg: timestamp: {}.{}, point_num: {}, Latency: {} ms", 
-                    msg.header.stamp.sec, msg.header.stamp.nanosec, msg.point_num, delay_ms);
-    }
+    // static int count = 0;
+    // if (count++ % 10 == 0) {
+    //   logger->debug("Received CustomMsg: timestamp: {}.{}, point_num: {}, Latency: {} ms", 
+    //                 msg.header.stamp.sec, msg.header.stamp.nanosec, msg.point_num, delay_ms);
+    // }
   }
 
   void on_imu_msg(const livox_ros::ImuMsg& msg) {
@@ -192,11 +188,11 @@ private:
       send("imu", msg, fins::from_ros_time(msg.header.stamp));
     }
 
-    static int count = 0;
-    if (count++ % 100 == 0) {
-      logger->debug("Received ImuMsg (every 100th): acc: [{}, {}, {}]", 
-                    msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z);
-    }
+    // static int count = 0;
+    // if (count++ % 100 == 0) {
+    //   logger->debug("Received ImuMsg (every 100th): acc: [{}, {}, {}]", 
+    //                 msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z);
+    // }
   }
 
 private:
