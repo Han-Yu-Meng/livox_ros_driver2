@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(livox_driver2 LANGUAGES CXX)
+project(livox_driver2 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -9,8 +9,8 @@ find_package(PCL       REQUIRED)
 find_package(livox_msg REQUIRED)
 
 # Find Livox SDK2
-find_library(LIVOX_LIDAR_SDK_LIBRARY NAMES livox_lidar_sdk_shared livox_lidar_sdk_static HINTS /usr/local/lib)
-find_path(LIVOX_LIDAR_SDK_INCLUDE_DIR NAMES "livox_lidar_api.h" "livox_lidar_def.h" HINTS /usr/local/include /usr/include)
+find_library(LIVOX_LIDAR_SDK_LIBRARY NAMES livox_lidar_sdk_shared livox_lidar_sdk_static HINTS ${LivoxSDK_DIR}/lib /usr/local/lib)
+find_path(LIVOX_LIDAR_SDK_INCLUDE_DIR NAMES "livox_lidar_api.h" "livox_lidar_def.h" HINTS ${LivoxSDK_DIR}/include /usr/local/include /usr/include)
 
 # Core Driver Library
 add_library(${PROJECT_NAME}_core SHARED

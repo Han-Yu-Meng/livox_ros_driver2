@@ -11,6 +11,7 @@ depends:
   sensor_msgs: "system"
   pcl_conversions: "system"
   livox_msg: "1.0.1"
+  LivoxSDK: "1.3.1"
 
 recipes:
   livox_msg:
@@ -19,6 +20,13 @@ recipes:
     versions:
       "1.0.1":
         tag: "v1.0.1"
+
+  LivoxSDK:
+    git: "https://github.com/Livox-SDK/Livox-SDK2.git"
+    build_system: "cmake"
+    versions:
+      "1.3.1":
+        tag: "v1.3.1"
         
 licenses:
   - "MIT"
