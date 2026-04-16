@@ -9,8 +9,7 @@ find_package(PCL       REQUIRED)
 find_package(livox_msg REQUIRED)
 
 # Find Livox SDK2
-find_library(LIVOX_LIDAR_SDK_LIBRARY NAMES livox_lidar_sdk_shared livox_lidar_sdk_static HINTS ${LivoxSDK_DIR}/lib /usr/local/lib)
-find_path(LIVOX_LIDAR_SDK_INCLUDE_DIR NAMES "livox_lidar_api.h" "livox_lidar_def.h" HINTS ${LivoxSDK_DIR}/include /usr/local/include /usr/include)
+find_package(LivoxSDK REQUIRED)
 
 # Core Driver Library
 add_library(${PROJECT_NAME}_core SHARED
@@ -52,6 +51,7 @@ target_link_libraries(${PROJECT_NAME}_core PUBLIC
   std_msgs::std_msgs__rosidl_generator_cpp
   sensor_msgs::sensor_msgs__rosidl_generator_cpp
   livox_msg::livox_msg
+  LivoxSDK::livox_lidar_sdk_shared
 )
 
 # FINS node

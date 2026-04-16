@@ -22,11 +22,11 @@ recipes:
         tag: "v1.0.1"
 
   LivoxSDK:
-    git: "https://github.com/Livox-SDK/Livox-SDK2.git"
+    git: "https://github.com/Han-Yu-Meng/Livox-SDK2"
     build_system: "cmake"
     versions:
       "1.3.1":
-        tag: "v1.3.1"
+        tag: "v1.3.1-patched"
         
 licenses:
   - "MIT"
