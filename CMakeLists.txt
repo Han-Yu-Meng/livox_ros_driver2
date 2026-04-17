@@ -12,7 +12,7 @@ find_package(livox_msg REQUIRED)
 find_package(LivoxSDK REQUIRED)
 
 # Core Driver Library
-add_library(${PROJECT_NAME}_core SHARED
+add_library(${PROJECT_NAME}_core STATIC
   src/livox_ros_driver2.cpp
   src/lddc.cpp
   src/driver_node.cpp
@@ -51,7 +51,7 @@ target_link_libraries(${PROJECT_NAME}_core PUBLIC
   std_msgs::std_msgs__rosidl_generator_cpp
   sensor_msgs::sensor_msgs__rosidl_generator_cpp
   livox_msg::livox_msg
-  LivoxSDK::livox_lidar_sdk_shared
+  LivoxSDK::livox_lidar_sdk_static
 )
 
 # FINS node
