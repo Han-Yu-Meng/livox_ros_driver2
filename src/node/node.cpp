@@ -121,8 +121,13 @@ private:
   }
 
   void on_custom_msg(const livox_ros::CustomMsg& msg) {
+    uint64_t timestamp_ns = msg.timebase;
+    if (!msg.points.empty()) {
+      timestamp_ns += msg.points.back().offset_time;
+    }
+    
     if (required("lidar")) {
-      send("lidar", msg, fins::from_ros_time(msg.header.stamp));
+      send("lidar", msg, fins::from_seconds(timestamp_ns / 1e9));
     }
 
     if (required("lidar_standard")) {
@@ -140,7 +145,7 @@ private:
       sensor_msgs::msg::PointCloud2 standard_msg;
       pcl::toROSMsg(pcl_cloud, standard_msg);
       standard_msg.header = msg.header;
-      send("lidar_standard", standard_msg, fins::from_ros_time(msg.header.stamp));
+      send("lidar_standard", standard_msg, fins::from_seconds(timestamp_ns / 1e9));
     }
     
     // uint64_t msg_ns = static_cast<uint64_t>(msg.header.stamp.sec) * 1000000000ULL + msg.header.stamp.nanosec;
