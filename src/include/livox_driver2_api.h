@@ -37,8 +37,8 @@ namespace livox_ros {
 using CustomMsg = livox_driver2::msg::CustomMsg;
 using ImuMsg = sensor_msgs::msg::Imu;
 
-using CustomMsgCallback = std::function<void(const CustomMsg& msg)>;
-using ImuMsgCallback = std::function<void(const ImuMsg& msg)>;
+using CustomMsgCallback = std::function<void(const CustomMsg& msg, uint8_t index)>;
+using ImuMsgCallback = std::function<void(const ImuMsg& msg, uint8_t index)>;
 
 class LivoxDriver {
  public:

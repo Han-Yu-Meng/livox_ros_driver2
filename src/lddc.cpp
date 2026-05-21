@@ -189,7 +189,7 @@ void Lddc::FillPointsToCustomMsg(CustomMsg& livox_msg, const StoragePacket& pkg)
 
 void Lddc::PublishCustomPointData(const CustomMsg& livox_msg, const uint8_t index) {
   if (custom_cb_) {
-    custom_cb_(livox_msg);
+    custom_cb_(livox_msg, index);
   }
 }
 
@@ -224,7 +224,7 @@ void Lddc::PublishImuData(LidarImuDataQueue& imu_data_queue, const uint8_t index
   InitImuMsg(imu_data, imu_msg, timestamp);
 
   if (imu_cb_) {
-    imu_cb_(imu_msg);
+    imu_cb_(imu_msg, index);
   }
 }
 
