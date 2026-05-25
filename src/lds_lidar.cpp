@@ -203,6 +203,7 @@ int LdsLidar::DeInitLdsLidar(void) {
     LivoxLidarSdkUninit();
   }
 
+  is_initialized_ = false;
   return 0;
 }
 

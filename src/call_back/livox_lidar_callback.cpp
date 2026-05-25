@@ -102,8 +102,10 @@ void LivoxLidarCallback::LidarInfoChangeCallback(const uint32_t handle,
                                  LivoxLidarCallback::SetAttitudeCallback, lds_lidar);
   }
 
-  std::cout << "begin to change work mode to 'Normal', handle: " << handle << std::endl;
-  SetLivoxLidarWorkMode(handle, kLivoxLidarNormal, WorkModeChangedCallback, nullptr);
+  if (lidar_device->connect_state != kConnectStateSampling) {
+    std::cout << "begin to change work mode to 'Normal', handle: " << handle << std::endl;
+    SetLivoxLidarWorkMode(handle, kLivoxLidarNormal, WorkModeChangedCallback, lds_lidar);
+  }
   EnableLivoxLidarImuData(handle, LivoxLidarCallback::EnableLivoxLidarImuDataCallback, lds_lidar);
   return;
 }
@@ -114,10 +116,18 @@ void LivoxLidarCallback::WorkModeChangedCallback(livox_status status,
                                                  void *client_data) {
   if (status != kLivoxLidarStatusSuccess) {
     std::cout << "failed to change work mode, handle: " << handle << ", try again..."<< std::endl;
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    SetLivoxLidarWorkMode(handle, kLivoxLidarNormal, WorkModeChangedCallback, nullptr);
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    SetLivoxLidarWorkMode(handle, kLivoxLidarNormal, WorkModeChangedCallback, client_data);
     return;
   }
+
+  if (client_data) {
+    LidarDevice* lidar_device = GetLidarDevice(handle, client_data);
+    if (lidar_device) {
+      lidar_device->connect_state = kConnectStateSampling;
+    }
+  }
+
   std::cout << "successfully change work mode, handle: " << handle << std::endl;
   return;
 }
