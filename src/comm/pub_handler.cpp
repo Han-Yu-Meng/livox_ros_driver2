@@ -77,6 +77,14 @@ void PubHandler::SetImuDataCallback(ImuDataCallback cb, void* client_data) {
   imu_callback_ = cb;
 }
 
+void PubHandler::SetFilterConfig(const FilterConfig& filter_config) {
+  std::unique_lock<std::mutex> lock(packet_mutex_);
+  filter_config_ = filter_config;
+  for (auto &process_handler : lidar_process_handlers_) {
+    process_handler.second->SetFilterConfig(filter_config_);
+  }
+}
+
 void PubHandler::AddLidarsExtParam(LidarExtParameter& lidar_param) {
   std::unique_lock<std::mutex> lock(packet_mutex_);
   uint32_t id = 0;
@@ -244,6 +252,7 @@ void PubHandler::RawDataProcess() {
     GetLidarId(raw_data.lidar_type, raw_data.handle, id);
     if (lidar_process_handlers_.find(id) == lidar_process_handlers_.end()) {
       lidar_process_handlers_[id].reset(new LidarPubHandler());
+      lidar_process_handlers_[id]->SetFilterConfig(filter_config_);
     }
     auto &process_handler = lidar_process_handlers_[id];
     if (lidar_extrinsics_.find(id) != lidar_extrinsics_.end()) {
@@ -300,6 +309,22 @@ uint64_t LidarPubHandler::GetRecentTimeStamp() {
 uint32_t LidarPubHandler::GetLidarPointCloudsSize() {
   std::lock_guard<std::mutex> lock(mutex_);
   return points_clouds_.size();
+}
+
+bool LidarPubHandler::IsPointValid(uint8_t tag) const {
+  switch (filter_config_.mode) {
+    case kFilterModeConservative:
+      // Keep points that are not dragging noise (bit5) and not low-confidence (bit0-1).
+      return ((tag & 0x30) == 0x00 || (tag & 0x30) == 0x10)
+             && ((tag & 0x03) == 0x00);
+    case kFilterModeAggressive:
+      // Additionally remove atmospheric particles (bit2-3).
+      return ((tag & 0x30) == 0x00 || (tag & 0x30) == 0x10)
+             && ((tag & 0x0F) == 0x00);
+    case kFilterModeOff:
+    default:
+      return true;
+  }
 }
 
 //convert to standard format and extrinsic compensate
@@ -386,6 +411,9 @@ void LidarPubHandler::ProcessCartesianHighPoint(RawPacket & pkt) {
     point.line = i % pkt.line_num;
     point.tag = raw[i].tag;
     point.offset_time = pkt.time_stamp + i * pkt.point_interval;
+    if (!IsPointValid(point.tag)) {
+      continue;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
     points_clouds_.push_back(point);
   }
@@ -414,6 +442,9 @@ void LidarPubHandler::ProcessCartesianLowPoint(RawPacket & pkt) {
     point.line = i % pkt.line_num;
     point.tag = raw[i].tag;
     point.offset_time = pkt.time_stamp + i * pkt.point_interval;
+    if (!IsPointValid(point.tag)) {
+      continue;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
     points_clouds_.push_back(point);
   }
@@ -449,6 +480,9 @@ void LidarPubHandler::ProcessSphericalPoint(RawPacket& pkt) {
     point.line = i % pkt.line_num;
     point.tag = raw[i].tag;
     point.offset_time = pkt.time_stamp + i * pkt.point_interval;
+    if (!IsPointValid(point.tag)) {
+      continue;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
     points_clouds_.push_back(point);
   }

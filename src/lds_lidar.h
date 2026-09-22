@@ -59,6 +59,7 @@ class LdsLidar final : public Lds {
   LdsLidar &operator=(const LdsLidar &) = delete;
 
   bool ParseSummaryConfig();
+  bool ParseFilterConfig();
 
   bool InitLidars();
   bool InitLivoxLidar();    // for new SDK
@@ -82,6 +83,7 @@ class LdsLidar final : public Lds {
  private:
   std::string path_;
   LidarSummaryInfo lidar_summary_info_;
+  FilterConfig filter_config_;
 
   bool auto_connect_mode_;
   uint32_t whitelist_count_;

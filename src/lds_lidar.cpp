@@ -104,6 +104,8 @@ bool LdsLidar::InitLidars() {
   }
   std::cout << "config lidar type: " << static_cast<int>(lidar_summary_info_.lidar_type) << std::endl;
 
+  ParseFilterConfig();
+
   if (lidar_summary_info_.lidar_type & kLivoxLidarType) {
     if (!InitLivoxLidar()) {
       return false;
@@ -124,6 +126,15 @@ bool LdsLidar::Start() {
 
 bool LdsLidar::ParseSummaryConfig() {
   return ParseCfgFile(path_).ParseSummaryInfo(lidar_summary_info_);
+}
+
+bool LdsLidar::ParseFilterConfig() {
+  if (!ParseCfgFile(path_).ParseFilterConfig(filter_config_)) {
+    return false;
+  }
+  pub_handler().SetFilterConfig(filter_config_);
+  std::cout << "config point filter mode: " << static_cast<int>(filter_config_.mode) << std::endl;
+  return true;
 }
 
 bool LdsLidar::InitLivoxLidar() {

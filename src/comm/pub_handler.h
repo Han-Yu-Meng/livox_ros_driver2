@@ -49,6 +49,7 @@ class LidarPubHandler {
   void PointCloudProcess(RawPacket& pkt);
   void SetLidarsExtParam(LidarExtParameter param);
   void GetLidarPointClouds(std::vector<PointXyzlt>& points_clouds);
+  void SetFilterConfig(const FilterConfig& filter_config) { filter_config_ = filter_config; }
 
   uint64_t GetRecentTimeStamp();
   uint32_t GetLidarPointCloudsSize();
@@ -59,7 +60,9 @@ class LidarPubHandler {
   void ProcessCartesianHighPoint(RawPacket & pkt);
   void ProcessCartesianLowPoint(RawPacket & pkt);
   void ProcessSphericalPoint(RawPacket & pkt);
+  bool IsPointValid(uint8_t tag) const;
   std::vector<PointXyzlt> points_clouds_;
+  FilterConfig filter_config_;
   ExtParameterDetailed extrinsic_ = {
     {0, 0, 0},
     {
@@ -86,6 +89,7 @@ class PubHandler {
   void RequestExit();
   void Init();
   void SetPointCloudConfig(const double publish_freq);
+  void SetFilterConfig(const FilterConfig& filter_config);
   void SetPointCloudsCallback(PointCloudsCallback cb, void* client_data);
   void AddLidarsExtParam(LidarExtParameter& extrinsic_params);
   void ClearAllLidarsExtrinsicParams();
@@ -127,6 +131,7 @@ class PubHandler {
   std::map<uint32_t, std::unique_ptr<LidarPubHandler>> lidar_process_handlers_;
   std::map<uint32_t, std::vector<PointXyzlt>> points_;
   std::map<uint32_t, LidarExtParameter> lidar_extrinsics_;
+  FilterConfig filter_config_;
   static std::atomic<bool> is_timestamp_sync_;
   uint16_t lidar_listen_id_ = 0;
 };

@@ -42,6 +42,7 @@ class ParseCfgFile {
   ~ParseCfgFile() {}
 
   bool ParseSummaryInfo(LidarSummaryInfo& lidar_summary_info);
+  bool ParseFilterConfig(FilterConfig& filter_config);
   
  private:
   const std::string path_;

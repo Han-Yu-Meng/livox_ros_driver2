@@ -2,6 +2,9 @@
   "lidar_summary_info" : {
     "lidar_type": 8
   },
+  "filter" : {
+    "mode": "conservative"
+  },
   "HAP": {
     "lidar_net_info" : {
       "cmd_data_port": 56000,

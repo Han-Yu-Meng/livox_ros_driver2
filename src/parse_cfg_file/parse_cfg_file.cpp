@@ -63,5 +63,56 @@ bool ParseCfgFile::ParseSummaryInfo(LidarSummaryInfo& lidar_summary_info) {
   return false;
 }
 
+bool ParseCfgFile::ParseFilterConfig(FilterConfig& filter_config) {
+  filter_config.mode = kFilterModeOff;
+
+  FILE* raw_file = std::fopen(path_.c_str(), "rb");
+  if (!raw_file) {
+    std::cout << "parse filter config failed, can not open file: " << path_ << std::endl;
+    return false;
+  }
+
+  char read_buffer[kMaxBufferSize];
+  rapidjson::FileReadStream config_file(raw_file, read_buffer, sizeof(read_buffer));
+  rapidjson::Document doc;
+  bool ret = true;
+  do {
+    if (doc.ParseStream(config_file).HasParseError()) {
+      std::cout << "parse filter config failed, invalid json file: " << path_ << std::endl;
+      ret = false;
+      break;
+    }
+    // The "filter" section is optional, keep all points when it is absent.
+    if (!doc.HasMember("filter") || !doc["filter"].IsObject()) {
+      break;
+    }
+    const rapidjson::Value &object = doc["filter"];
+    if (!object.HasMember("mode")) {
+      std::cout << "filter config has no \"mode\" member, use default off." << std::endl;
+      break;
+    }
+    const rapidjson::Value &mode = object["mode"];
+    if (mode.IsString()) {
+      std::string mode_str = mode.GetString();
+      if (mode_str == "off") {
+        filter_config.mode = kFilterModeOff;
+      } else if (mode_str == "conservative") {
+        filter_config.mode = kFilterModeConservative;
+      } else if (mode_str == "aggressive") {
+        filter_config.mode = kFilterModeAggressive;
+      } else {
+        std::cout << "unknown filter mode: " << mode_str << ", use default off." << std::endl;
+      }
+    } else if (mode.IsUint()) {
+      filter_config.mode = static_cast<uint8_t>(mode.GetUint());
+    } else {
+      std::cout << "invalid filter mode type, use default off." << std::endl;
+    }
+  } while (false);
+
+  std::fclose(raw_file);
+  return ret;
+}
+
 } // namespace livox_ros
 

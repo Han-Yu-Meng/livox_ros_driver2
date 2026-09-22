@@ -134,6 +134,17 @@ typedef struct {
  uint8_t lidar_type {};
 } LidarSummaryInfo;
 
+/** Point cloud filter mode, based on the Livox point tag noise bits. */
+typedef enum {
+  kFilterModeOff = 0,          /**< Publish all points, no filtering. */
+  kFilterModeConservative = 1, /**< Only remove dragging noise. */
+  kFilterModeAggressive = 2,   /**< Remove dragging noise and atmospheric particles. */
+} LivoxFilterMode;
+
+typedef struct {
+  uint8_t mode {}; /**< LivoxFilterMode */
+} FilterConfig;
+
 /** 8bytes stamp to uint64_t stamp */
 typedef union {
   struct {
