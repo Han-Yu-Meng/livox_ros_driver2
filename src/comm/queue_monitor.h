@@ -93,6 +93,8 @@ struct PublishSnapshot {
 class QueueMonitor {
  public:
   using Clock = std::chrono::steady_clock;
+  /** 队列监测句柄（定义在 livox_ros 命名空间），两种写法等价。 */
+  using Gauge = ::livox_ros::Gauge;
 
   /** CheckTimer 未发布的原因分类。 */
   enum class SkipReason : uint32_t {
