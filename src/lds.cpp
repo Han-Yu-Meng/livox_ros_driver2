@@ -28,8 +28,10 @@
 #include <time.h>
 #include <chrono>
 #include <algorithm>
+#include <string>
 
 #include "comm/ldq.h"
+#include "comm/queue_monitor.h"
 #include "lddc.h"
 
 namespace livox_ros {
@@ -112,7 +114,12 @@ void Lds::StorageImuData(ImuData* imu_data) {
 
   LidarDevice *p_lidar = &lidars_[index];
   LidarImuDataQueue* imu_queue = &p_lidar->imu_data;
+  if (imu_queue_gauges_[index] == nullptr) {
+    imu_queue_gauges_[index] = QueueMonitor::Instance().RegisterQueue(
+        "imu_q." + std::to_string(index), 0, 4096);
+  }
   imu_queue->Push(imu_data);
+  QueueMonitor::Instance().ReportEnqueue(imu_queue_gauges_[index]);
   if (lddc_) {
     static_cast<Lddc*>(lddc_)->DistributeImuData(index);
   }
@@ -170,18 +177,31 @@ void Lds::PushLidarData(PointPacket* lidar_data, const uint8_t index, const uint
   LidarDevice *p_lidar = &lidars_[index];
   LidarDataQueue *queue = &p_lidar->data;
 
+  QueueMonitor& monitor = QueueMonitor::Instance();
+  if (pcd_queue_gauges_[index] == nullptr) {
+    const uint32_t init_size = CalculatePacketQueueSize(publish_freq_);
+    const uint32_t capacity = IsPowerOf2(init_size) ? init_size : RoundupPowerOf2(init_size);
+    pcd_queue_gauges_[index] = monitor.RegisterQueue(
+        "lds_pcd_q." + std::to_string(index), capacity, 0);
+  }
+  QueueMonitor::Gauge* gauge = pcd_queue_gauges_[index];
+
   if (nullptr == queue->storage_packet) {
     uint32_t queue_size = CalculatePacketQueueSize(publish_freq_);
     InitQueue(queue, queue_size);
     printf("Lidar[%u] storage queue size: %u\n", index, queue_size);
   }
+  monitor.SetDepth(gauge, QueueUsedSize(queue));
 
   if (!QueueIsFull(queue)) {
     QueuePushAny(queue, (uint8_t *)lidar_data, base_time);
+    monitor.ReportEnqueue(gauge);
     if (lddc_) {
       static_cast<Lddc*>(lddc_)->DistributePointCloudData(index);
     }
   } else {
+    // 队列已满：该帧被静默丢弃，此处计数以便监测发现（原实现无任何提示）。
+    monitor.ReportDrop(gauge);
     if (lddc_) {
       static_cast<Lddc*>(lddc_)->DistributePointCloudData(index);
     }

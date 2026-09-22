@@ -111,6 +111,7 @@ void Lddc::PollingLidarPointCloudData(uint8_t index, LidarDevice *lidar) {
       }
       StoragePacket pkg;
       QueuePop(p_queue, &pkg);
+      QueueMonitor::Instance().ReportDequeue(lds_->PcdQueueGauge(index));
     }
   }
 }
@@ -133,6 +134,7 @@ void Lddc::PublishCustomPointcloud(LidarDataQueue *queue, uint8_t index) {
   while(!QueueIsEmpty(queue)) {
     StoragePacket pkg;
     QueuePop(queue, &pkg);
+    QueueMonitor::Instance().ReportDequeue(lds_->PcdQueueGauge(index));
     if (pkg.points.empty()) {
       printf("Publish custom point cloud failed, the pkg points is empty.\n");
       continue;
@@ -218,6 +220,7 @@ void Lddc::PublishImuData(LidarImuDataQueue& imu_data_queue, const uint8_t index
     //printf("Publish imu data failed, imu data queue pop failed.\n");
     return;
   }
+  QueueMonitor::Instance().ReportDequeue(lds_->ImuQueueGauge(index));
 
   ImuMsg imu_msg;
   uint64_t timestamp;

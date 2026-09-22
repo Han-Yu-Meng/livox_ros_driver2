@@ -26,6 +26,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <algorithm>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -193,6 +194,22 @@ bool LdsLidar::InitLivoxLidar() {
 }
 
 void LdsLidar::SetLidarPubHandle() {
+  // 启动流水线监测：按发布频率推导告警阈值（先于数据处理线程启动，避免竞态）
+  const double publish_freq_cfg = Lds::GetLdsFrequency();
+  QueueMonitor::Config mon_cfg;
+  mon_cfg.period_ms = 1000;
+  // 连续 2 帧以上没有输出即告警
+  mon_cfg.stall_warn_ms = std::max<uint32_t>(
+      300,
+      static_cast<uint32_t>(2000.0 / (publish_freq_cfg > 0.0 ? publish_freq_cfg : 10.0)));
+  // 单次回调不超过半个发布周期
+  mon_cfg.callback_warn_ms = std::max<uint32_t>(
+      30, static_cast<uint32_t>(500.0 / (publish_freq_cfg > 0.0 ? publish_freq_cfg : 10.0)));
+  mon_cfg.pending_points_warn = 300000;
+  mon_cfg.periodic_log = true;
+  QueueMonitor::Instance().Configure(mon_cfg);
+  QueueMonitor::Instance().Start();
+
   pub_handler().SetPointCloudsCallback(LidarCommonCallback::OnLidarPointClounCb, g_lds_ldiar);
   pub_handler().SetImuDataCallback(LidarCommonCallback::LidarImuDataCallback, g_lds_ldiar);
 
@@ -217,6 +234,10 @@ int LdsLidar::DeInitLdsLidar(void) {
   return 0;
 }
 
-void LdsLidar::PrepareExit(void) { DeInitLdsLidar(); }
+void LdsLidar::PrepareExit(void) {
+  fprintf(stderr, "%s\n", QueueMonitor::Instance().Dump().c_str());
+  QueueMonitor::Instance().Stop();
+  DeInitLdsLidar();
+}
 
 }  // namespace livox_ros

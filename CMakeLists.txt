@@ -25,6 +25,7 @@ add_library(${PROJECT_NAME}_core STATIC
   src/comm/lidar_imu_data_queue.cpp
   src/comm/cache_index.cpp
   src/comm/pub_handler.cpp
+  src/comm/queue_monitor.cpp
 
   src/parse_cfg_file/parse_cfg_file.cpp
   src/parse_cfg_file/parse_livox_lidar_cfg.cpp

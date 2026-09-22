@@ -24,6 +24,7 @@
 
 #include "pub_handler.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <chrono>
 #include <iostream>
@@ -66,6 +67,9 @@ void PubHandler::SetPointCloudConfig(const double publish_freq) {
   publish_interval_ = (kNsPerSecond / (publish_freq * 10)) * 10;
   publish_interval_tolerance_ = publish_interval_ - kNsTolerantFrameTimeDeviation;
   publish_interval_ms_ = publish_interval_ / kRatioOfMsToNs;
+  // 允许缓存 2 个发布周期的积压，超过则切片发布（不再整堆吐出）
+  max_frame_span_ns_ = (publish_interval_ > 0) ? (publish_interval_ * 2) : 200000000ULL;
+  raw_queue_gauge_ = QueueMonitor::Instance().RegisterQueue("raw_packet", 0, 0);
   if (!point_process_thread_) {
     point_process_thread_ = std::make_shared<std::thread>(&PubHandler::RawDataProcess, this);
   }
@@ -155,6 +159,7 @@ void PubHandler::OnLivoxLidarPointCloudCallback(uint32_t handle, const uint8_t d
   {
     std::unique_lock<std::mutex> lock(self->packet_mutex_);
     self->raw_packet_queue_.push_back(packet);
+    QueueMonitor::Instance().ReportEnqueue(self->raw_queue_gauge_);
   }
     self->packet_condition_.notify_one();
 
@@ -164,29 +169,91 @@ void PubHandler::OnLivoxLidarPointCloudCallback(uint32_t handle, const uint8_t d
 void PubHandler::PublishPointCloud() {
   //publish point
   if (points_callback_) {
+    CallbackCostTimer cost_timer;
     points_callback_(&frame_, pub_client_data_);
   }
+  uint64_t frame_points = 0;
+  for (uint8_t i = 0; i < frame_.lidar_num; ++i) {
+    frame_points += frame_.lidar_point[i].points_num;
+  }
+  QueueMonitor::Instance().NotifyFrame(frame_points);
   return;
 }
 
+QueueMonitor::Gauge* PubHandler::GetPendingGauge(uint32_t id) {
+  auto it = pending_gauges_.find(id);
+  if (it != pending_gauges_.end()) {
+    return it->second;
+  }
+  QueueMonitor::Gauge* gauge = QueueMonitor::Instance().RegisterQueue(
+      "pending_pts." + std::to_string(id), 0,
+      QueueMonitor::Instance().GetPendingPointsWarn());
+  pending_gauges_[id] = gauge;
+  return gauge;
+}
+
 void PubHandler::CheckTimer(uint32_t id) {
+  QueueMonitor& monitor = QueueMonitor::Instance();
+  if (lidar_process_handlers_.find(id) == lidar_process_handlers_.end() ||
+      lidar_process_handlers_[id] == nullptr) {
+    return;
+  }
+  auto& process_handler = lidar_process_handlers_[id];
+
+  // 一次加锁取回首尾时间戳与点数，避免分别读取时撞上 GetLidarPointClouds() 的 swap
+  uint64_t base_time = 0;
+  uint64_t recent_time = 0;
+  uint32_t pending_size = 0;
+  process_handler->GetPendingTimeRange(base_time, recent_time, pending_size);
+  monitor.SetDepth(GetPendingGauge(id), pending_size);
+
+  const uint64_t interval_ns = (publish_interval_ > 0) ? publish_interval_ : 100000000ULL;
 
   if (PubHandler::is_timestamp_sync_.load()) { // Enable time synchronization
-    auto& process_handler = lidar_process_handlers_[id];
-    uint64_t recent_time_ms = process_handler->GetRecentTimeStamp() / kRatioOfMsToNs;
-    if ((recent_time_ms % publish_interval_ms_ != 0) || recent_time_ms == 0) {
+    if (recent_time == 0) {
+      monitor.BumpSkip(QueueMonitor::SkipReason::kEmptyCloud);
       return;
     }
 
-    uint64_t diff = process_handler->GetRecentTimeStamp() - process_handler->GetLidarBaseTime();
+    const uint64_t diff = (recent_time > base_time) ? (recent_time - base_time) : 0;
+    // 积压超限时跳过时间槽判定，直接切片发布，把堆积的数据按正常帧大小追平
+    const bool flush_backlog = diff > max_frame_span_ns_;
+    const uint64_t slot = recent_time / interval_ns;
+    if (!flush_backlog) {
+      // 原实现要求 recent_time_ms % publish_interval_ms_ == 0，也就是每个发布周期里
+      // 只有 1ms 的窗口能放行；时间戳不是整毫秒对齐时命中率极低，导致点云持续累积，
+      // 一旦命中就把几秒的数据一次性吐出。这里改为"跨越新的发布槽即发布"，
+      // 只要时间戳进入下一个 publish_interval 就放行，不再依赖毫秒取模对齐。
+      auto slot_it = last_publish_slot_.find(id);
+      if (slot_it == last_publish_slot_.end()) {
+        last_publish_slot_[id] = slot;
+        monitor.BumpSkip(QueueMonitor::SkipReason::kBootstrap);
+        return;
+      }
+      if (slot <= slot_it->second) {
+        monitor.BumpSkip(QueueMonitor::SkipReason::kSlotNotAdvanced);
+        return;
+      }
+      slot_it->second = slot;
+    } else {
+      last_publish_slot_[id] = slot;
+    }
+
     if (diff < publish_interval_tolerance_) {
+      monitor.BumpSkip(QueueMonitor::SkipReason::kSpanTooShort);
       return;
     }
 
-    frame_.base_time[frame_.lidar_num] = process_handler->GetLidarBaseTime();
+    frame_.base_time[frame_.lidar_num] = base_time;
     points_[id].clear();
-    process_handler->GetLidarPointClouds(points_[id]);
+    if (flush_backlog) {
+      monitor.BumpSkip(QueueMonitor::SkipReason::kForceFlush);
+      process_handler->ExtractPointsUpTo(base_time + interval_ns, points_[id]);
+    } else {
+      process_handler->GetLidarPointClouds(points_[id]);
+    }
     if (points_[id].empty()) {
+      monitor.BumpSkip(QueueMonitor::SkipReason::kEmptyCloud);
       return;
     }
     PointPacket& lidar_point = frame_.lidar_point[frame_.lidar_num];
@@ -207,18 +274,34 @@ void PubHandler::CheckTimer(uint32_t id) {
     if (first) {
       last_pub_time_ = now_time;
       first = false;
+      monitor.BumpSkip(QueueMonitor::SkipReason::kBootstrap);
       return;
     }
     if (now_time - last_pub_time_ < std::chrono::nanoseconds(publish_interval_)) {
+      monitor.BumpSkip(QueueMonitor::SkipReason::kIntervalNotReached);
       return;
     }
     last_pub_time_ += std::chrono::nanoseconds(publish_interval_);
-    for (auto &process_handler : lidar_process_handlers_) {
-      frame_.base_time[frame_.lidar_num] = process_handler.second->GetLidarBaseTime();
-      uint32_t handle = process_handler.first;
+    for (auto &handler_pair : lidar_process_handlers_) {
+      const uint32_t handle = handler_pair.first;
+      uint64_t base_time = 0;
+      uint64_t recent_time = 0;
+      uint32_t pending_size = 0;
+      handler_pair.second->GetPendingTimeRange(base_time, recent_time, pending_size);
+      monitor.SetDepth(GetPendingGauge(handle), pending_size);
+
+      frame_.base_time[frame_.lidar_num] = base_time;
       points_[handle].clear();
-      process_handler.second->GetLidarPointClouds(points_[handle]);
+      const uint64_t diff = (recent_time > base_time) ? (recent_time - base_time) : 0;
+      if (diff > max_frame_span_ns_) {
+        // 非同步模式下同样做切片保护，避免积压后一次性吐出超大帧
+        monitor.BumpSkip(QueueMonitor::SkipReason::kForceFlush);
+        handler_pair.second->ExtractPointsUpTo(base_time + interval_ns, points_[handle]);
+      } else {
+        handler_pair.second->GetLidarPointClouds(points_[handle]);
+      }
       if (points_[handle].empty()) {
+        monitor.BumpSkip(QueueMonitor::SkipReason::kEmptyCloud);
         continue;
       }
       PointPacket& lidar_point = frame_.lidar_point[frame_.lidar_num];
@@ -247,6 +330,7 @@ void PubHandler::RawDataProcess() {
       }
       raw_data = raw_packet_queue_.front();
       raw_packet_queue_.pop_front();
+      QueueMonitor::Instance().ReportDequeue(raw_queue_gauge_);
     }
     uint32_t id = 0;
     GetLidarId(raw_data.lidar_type, raw_data.handle, id);
@@ -292,6 +376,39 @@ uint64_t LidarPubHandler::GetLidarBaseTime() {
     return 0;
   }
   return points_clouds_.at(0).offset_time;
+}
+
+void LidarPubHandler::GetPendingTimeRange(uint64_t& base_time, uint64_t& recent_time,
+                                          uint32_t& size) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  size = static_cast<uint32_t>(points_clouds_.size());
+  if (points_clouds_.empty()) {
+    base_time = 0;
+    recent_time = 0;
+    return;
+  }
+  base_time = points_clouds_.front().offset_time;
+  recent_time = points_clouds_.back().offset_time;
+}
+
+uint32_t LidarPubHandler::ExtractPointsUpTo(uint64_t cutoff_time,
+                                            std::vector<PointXyzlt>& points_clouds) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  points_clouds.clear();
+  if (points_clouds_.empty()) {
+    return 0;
+  }
+  // points_clouds_ 按 offset_time 非递减排列，取第一个大于 cutoff 的位置
+  auto cut = std::upper_bound(points_clouds_.begin(), points_clouds_.end(), cutoff_time,
+                              [](uint64_t time_val, const PointXyzlt& point) {
+                                return time_val < point.offset_time;
+                              });
+  if (cut == points_clouds_.begin()) {
+    return 0;
+  }
+  points_clouds.insert(points_clouds.end(), points_clouds_.begin(), cut);
+  points_clouds_.erase(points_clouds_.begin(), cut);
+  return static_cast<uint32_t>(points_clouds.size());
 }
 
 void LidarPubHandler::GetLidarPointClouds(std::vector<PointXyzlt>& points_clouds) {

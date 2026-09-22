@@ -32,6 +32,7 @@
 #include "comm/semaphore.h"
 #include "comm/comm.h"
 #include "comm/cache_index.h"
+#include "comm/queue_monitor.h"
 
 namespace livox_ros {
 /**
@@ -67,6 +68,14 @@ class Lds {
   // get publishing frequency
   double GetLdsFrequency() { return publish_freq_; }
 
+  /** 环形缓存/IMU 缓存的监测句柄，索引与 lidars_ 一致。 */
+  QueueMonitor::Gauge* PcdQueueGauge(uint8_t index) {
+    return (index < kMaxSourceLidar) ? pcd_queue_gauges_[index] : nullptr;
+  }
+  QueueMonitor::Gauge* ImuQueueGauge(uint8_t index) {
+    return (index < kMaxSourceLidar) ? imu_queue_gauges_[index] : nullptr;
+  }
+
  public:
   uint8_t lidar_count_;                 /**< Lidar access handle. */
   LidarDevice lidars_[kMaxSourceLidar]; /**< The index is the handle */
@@ -79,6 +88,8 @@ class Lds {
   uint8_t data_src_;
  private:
   volatile bool request_exit_;
+  QueueMonitor::Gauge* pcd_queue_gauges_[kMaxSourceLidar] = {nullptr};
+  QueueMonitor::Gauge* imu_queue_gauges_[kMaxSourceLidar] = {nullptr};
 };
 
 }  // namespace livox_ros
