@@ -6,7 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find PCL
 find_package(PCL       REQUIRED)
-find_package(livox_msg REQUIRED)
+# ROS 2 message package providing livox_ros_driver2/msg/CustomMsg
+find_package(livox_ros_driver2 REQUIRED)
 
 # Find Livox SDK2
 find_package(LivoxSDK REQUIRED)
@@ -51,7 +52,8 @@ target_link_libraries(${PROJECT_NAME}_core PUBLIC
   pthread
   std_msgs::std_msgs__rosidl_generator_cpp
   sensor_msgs::sensor_msgs__rosidl_generator_cpp
-  livox_msg::livox_msg
+  livox_ros_driver2::livox_interfaces2__rosidl_generator_cpp
+  livox_ros_driver2::livox_interfaces2__rosidl_typesupport_cpp
   LivoxSDK::livox_lidar_sdk_static
 )
 
